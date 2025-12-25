@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AttendEase - Teacher Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #3b82f6;
+            --primary-dark: #2563eb;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --dark: #1e293b;
+            --light: #f8fafc;
+            --text: #334155;
+            --border: #e2e8f0;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: var(--light);
+            color: var(--text);
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            background: white;
+            padding: 24px;
+            border-radius: 16px;
+            margin-bottom: 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .logo {
+            font-family: 'Outfit', sans-serif;
+            font-size: 28px;
+            font-weight: 800;
+            color: var(--primary);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .logo-icon {
+            width: 48px;
+            height: 48px;
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 24px;
+        }
+
+        .user-info {
+            padding-left: 16px;
+            border-left: 2px solid var(--border);
+        }
+
+        .user-name {
+            font-weight: 600;
+            color: var(--dark);
+            font-size: 18px;
+        }
+
+        .user-role {
+            font-size: 14px;
+            color: var(--text);
+            opacity: 0.7;
+        }
+
+        .logout-btn {
+            padding: 12px 24px;
+            background: var(--danger);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-family: 'Poppins', sans-serif;
+        }
+
+        .logout-btn:hover {
+            background: #dc2626;
+            transform: translateY(-2px);
+        }
+
+        .section {
+            background: white;
+            border-radius: 16px;
+            padding: 28px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+            margin-bottom: 24px;
+        }
+
+        .section-title {
+            font-family: 'Outfit', sans-serif;
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--dark);
+            margin-bottom: 24px;
+        }
+
+        .lecture-setup {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 24px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: var(--dark);
+            font-size: 14px;
+        }
+
+        .form-group select,
+        .form-group input {
+            width: 100%;
+            padding: 12px 14px;
+            border: 2px solid var(--border);
+            border-radius: 10px;
+            font-size: 14px;
+            font-family: 'Poppins', sans-serif;
+            transition: all 0.3s;
+        }
+
+        .form-group select:focus,
+        .form-group input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 10px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-family: 'Poppins', sans-serif;
+            font-size: 14px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: white;
+            width: 100%;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(59, 130, 246, 0.3);
+        }
+
+        .btn-success {
+            background: var(--success);
+            color: white;
+            width: 100%;
+        }
+
+        .btn-success:hover {
+            background: #059669;
+            transform: translateY(-2px);
+        }
+
+        .lecture-info {
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: white;
+            padding: 24px;
+            border-radius: 12px;
+            margin-bottom: 24px;
+            display: none;
+        }
+
+        .lecture-info.active {
+            display: block;
+        }
+
+        .lecture-details {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+        }
+
+        .detail-item {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .detail-label {
+            font-size: 13px;
+            opacity: 0.9;
+            margin-bottom: 4px;
+        }
+
+        .detail-value {
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .attendance-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 16px;
+            display: none;
+        }
+
+        .attendance-grid.active {
+            display: grid;
+        }
+
+        .student-card {
+            background: var(--light);
+            border: 2px solid var(--border);
+            border-radius: 12px;
+            padding: 20px;
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+
+        .student-card:hover {
+            border-color: var(--primary);
+            box-shadow: 0 5px 15px rgba(59, 130, 246, 0.1);
+        }
+
+        .student-card.present {
+            border-color: var(--success);
+            background: rgba(16, 185, 129, 0.05);
+        }
+
+        .student-card.absent {
+            border-color: var(--danger);
+            background: rgba(239, 68, 68, 0.05);
+        }
+
+        .student-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 12px;
+        }
+
+        .student-avatar {
+            width: 48px;
+            height: 48px;
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 700;
+            font-size: 18px;
+        }
+
+        .status-indicator {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            font-weight: bold;
+        }
+
+        .status-indicator.present {
+            background: var(--success);
+            color: white;
+        }
+
+        .status-indicator.absent {
+            background: var(--danger);
+            color: white;
+        }
+
+        .student-name {
+            font-weight: 600;
+            font-size: 16px;
+            color: var(--dark);
+            margin-bottom: 4px;
+        }
+
+        .student-details {
+            font-size: 13px;
+            color: var(--text);
+            opacity: 0.7;
+        }
+
+        .bulk-actions {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 24px;
+            display: none;
+        }
+
+        .bulk-actions.active {
+            display: flex;
+        }
+
+        .bulk-btn {
+            flex: 1;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 10px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-family: 'Poppins', sans-serif;
+        }
+
+        .bulk-btn.mark-all-present {
+            background: var(--success);
+            color: white;
+        }
+
+        .bulk-btn.mark-all-absent {
+            background: var(--danger);
+            color: white;
+        }
+
+        .bulk-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .stats-summary {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+            display: none;
+        }
+
+        .stats-summary.active {
+            display: grid;
+        }
+
+        .stat-box {
+            background: var(--light);
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+            border: 2px solid var(--border);
+        }
+
+        .stat-number {
+            font-size: 32px;
+            font-weight: 700;
+            color: var(--dark);
+            margin-bottom: 4px;
+        }
+
+        .stat-label {
+            font-size: 13px;
+            color: var(--text);
+            opacity: 0.7;
+        }
+
+        .save-section {
+            display: none;
+            text-align: center;
+            padding-top: 24px;
+            border-top: 2px solid var(--border);
+        }
+
+        .save-section.active {
+            display: block;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 12px;
+            }
+
+            .header {
+                flex-direction: column;
+                gap: 16px;
+                padding: 20px 16px;
+            }
+
+            .header-left {
+                flex-direction: column;
+                align-items: flex-start;
+                width: 100%;
+            }
+
+            .logo {
+                font-size: 24px;
+            }
+
+            .user-info {
+                padding-left: 0;
+                border-left: none;
+                padding-top: 12px;
+                border-top: 2px solid var(--border);
+                width: 100%;
+            }
+
+            .logout-btn {
+                width: 100%;
+            }
+
+            .section {
+                padding: 20px 16px;
+            }
+
+            .section-title {
+                font-size: 20px;
+            }
+
+            .lecture-setup {
+                grid-template-columns: 1fr;
+            }
+
+            .attendance-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .bulk-actions {
+                flex-direction: column;
+            }
+
+            .lecture-details {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .logo-icon {
+                width: 40px;
+                height: 40px;
+                font-size: 20px;
+            }
+
+            .stat-number {
+                font-size: 24px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="header-left">
+                <div class="logo">
+                    <div class="logo-icon">📚</div>
+                    AttendEase
+                </div>
+                <div class="user-info">
+                    <div class="user-name">Teacher</div>
+                    <div class="user-role">Lecture Attendance</div>
+                </div>
+            </div>
+            <button class="logout-btn" onclick="logout()">🚪 Logout</button>
+        </div>
+
+        <!-- Lecture Setup Section -->
+        <div class="section">
+            <h2 class="section-title">📋 Start New Lecture</h2>
+            <div class="lecture-setup">
+                <div class="form-group">
+                    <label>Semester</label>
+                    <select id="semester">
+                        <option value="">Select Semester</option>
+                        <option value="1">Semester 1</option>
+                        <option value="2">Semester 2</option>
+                        <option value="3">Semester 3</option>
+                        <option value="4">Semester 4</option>
+                        <option value="5">Semester 5</option>
+                        <option value="6">Semester 6</option>
+                        <option value="7">Semester 7</option>
+                        <option value="8">Semester 8</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Section</label>
+                    <select id="section">
+                        <option value="">Select Section</option>
+                        <option value="A">Section A</option>
+                        <option value="B">Section B</option>
+                        <option value="C">Section C</option>
+                        <option value="D">Section D</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Subject</label>
+                    <input type="text" id="subject" placeholder="e.g., Mathematics, Physics">
+                </div>
+
+                <div class="form-group">
+                    <label>Date</label>
+                    <input type="date" id="lectureDate">
+                </div>
+
+                <div class="form-group">
+                    <label>Start Time</label>
+                    <input type="time" id="startTime">
+                </div>
+
+                <div class="form-group">
+                    <label>End Time</label>
+                    <input type="time" id="endTime">
+                </div>
+            </div>
+            <button class="btn btn-primary" onclick="startLecture()">Start Taking Attendance</button>
+        </div>
+
+        <!-- Lecture Info Display -->
+        <div class="lecture-info" id="lectureInfo">
+            <h3 style="margin-bottom: 16px; font-size: 20px;">Current Lecture Details</h3>
+            <div class="lecture-details">
+                <div class="detail-item">
+                    <span class="detail-label">Semester</span>
+                    <span class="detail-value" id="displaySemester">-</span>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">Section</span>
+                    <span class="detail-value" id="displaySection">-</span>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">Subject</span>
+                    <span class="detail-value" id="displaySubject">-</span>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">Date</span>
+                    <span class="detail-value" id="displayDate">-</span>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">Time</span>
+                    <span class="detail-value" id="displayTime">-</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Attendance Section -->
+        <div class="section" id="attendanceSection" style="display: none;">
+            <h2 class="section-title">✅ Mark Attendance</h2>
+
+            <div class="stats-summary" id="statsSummary">
+                <div class="stat-box">
+                    <div class="stat-number" id="totalStudents">0</div>
+                    <div class="stat-label">Total Students</div>
+                </div>
+                <div class="stat-box" style="border-color: var(--success);">
+                    <div class="stat-number" style="color: var(--success);" id="presentCount">0</div>
+                    <div class="stat-label">Present</div>
+                </div>
+                <div class="stat-box" style="border-color: var(--danger);">
+                    <div class="stat-number" style="color: var(--danger);" id="absentCount">0</div>
+                    <div class="stat-label">Absent</div>
+                </div>
+                <div class="stat-box" style="border-color: var(--primary);">
+                    <div class="stat-number" style="color: var(--primary);" id="attendanceRate">0%</div>
+                    <div class="stat-label">Attendance Rate</div>
+                </div>
+            </div>
+
+            <div class="bulk-actions" id="bulkActions">
+                <button class="bulk-btn mark-all-present" onclick="markAllPresent()">✓ Mark All Present</button>
+                <button class="bulk-btn mark-all-absent" onclick="markAllAbsent()">✗ Mark All Absent</button>
+            </div>
+
+            <div class="attendance-grid" id="attendanceGrid">
+                <!-- Dynamic student cards -->
+            </div>
+
+            <div class="save-section" id="saveSection">
+                <button class="btn btn-success" onclick="saveAttendance()">💾 Save Lecture Attendance</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/js/teacher-script.js"></script>
+</body>
+</html>

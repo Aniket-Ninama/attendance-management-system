@@ -1,0 +1,20 @@
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# Virtual environment
+venv/
+.env
+
+# Flask instance folder (contains secrets/config)
+instance/
+
+# Logs
+*.log
+
+# IDE/editor files
+.vscode/
+.idea/
+
+

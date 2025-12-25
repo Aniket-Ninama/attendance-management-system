@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AttendEase - Student Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #3b82f6;
+            --primary-dark: #2563eb;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --dark: #1e293b;
+            --light: #f8fafc;
+            --text: #334155;
+            --border: #e2e8f0;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: var(--light);
+            color: var(--text);
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            background: white;
+            padding: 24px;
+            border-radius: 16px;
+            margin-bottom: 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .logo {
+            font-family: 'Outfit', sans-serif;
+            font-size: 28px;
+            font-weight: 800;
+            color: var(--primary);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .logo-icon {
+            width: 48px;
+            height: 48px;
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 24px;
+        }
+
+        .user-info {
+            padding-left: 16px;
+            border-left: 2px solid var(--border);
+        }
+
+        .user-name {
+            font-weight: 600;
+            color: var(--dark);
+            font-size: 18px;
+        }
+
+        .user-role {
+            font-size: 14px;
+            color: var(--text);
+            opacity: 0.7;
+        }
+
+        .logout-btn {
+            padding: 12px 24px;
+            background: var(--danger);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-family: 'Poppins', sans-serif;
+        }
+
+        .logout-btn:hover {
+            background: #dc2626;
+            transform: translateY(-2px);
+        }
+
+        .profile-section {
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            padding: 40px;
+            border-radius: 16px;
+            margin-bottom: 24px;
+            color: white;
+            display: flex;
+            align-items: center;
+            gap: 24px;
+            box-shadow: 0 10px 30px rgba(59, 130, 246, 0.3);
+        }
+
+        .profile-avatar {
+            width: 100px;
+            height: 100px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 40px;
+            font-weight: 700;
+        }
+
+        .profile-details h2 {
+            font-family: 'Outfit', sans-serif;
+            font-size: 32px;
+            margin-bottom: 8px;
+        }
+
+        .profile-details p {
+            opacity: 0.9;
+            font-size: 16px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 28px;
+            border-radius: 16px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+            transition: all 0.3s;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+
+        .stat-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 20px;
+        }
+
+        .stat-icon {
+            width: 56px;
+            height: 56px;
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+        }
+
+        .stat-icon.pink { background: rgba(59, 130, 246, 0.1); }
+        .stat-icon.green { background: rgba(16, 185, 129, 0.1); }
+        .stat-icon.red { background: rgba(239, 68, 68, 0.1); }
+
+        .stat-value {
+            font-size: 42px;
+            font-weight: 700;
+            color: var(--dark);
+            margin-bottom: 8px;
+        }
+
+        .stat-label {
+            font-size: 15px;
+            color: var(--text);
+            opacity: 0.7;
+        }
+
+        .section {
+            background: white;
+            border-radius: 16px;
+            padding: 28px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+            margin-bottom: 24px;
+        }
+
+        .section-title {
+            font-family: 'Outfit', sans-serif;
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--dark);
+            margin-bottom: 24px;
+        }
+
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 8px;
+        }
+
+        .calendar-day {
+            aspect-ratio: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            border-radius: 12px;
+            border: 2px solid var(--border);
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+
+        .calendar-day:hover {
+            transform: scale(1.05);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .calendar-day.present {
+            background: rgba(16, 185, 129, 0.1);
+            border-color: var(--success);
+        }
+
+        .calendar-day.absent {
+            background: rgba(239, 68, 68, 0.1);
+            border-color: var(--danger);
+        }
+
+        .calendar-day.today {
+            border-color: var(--primary);
+            border-width: 3px;
+        }
+
+        .day-number {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--dark);
+        }
+
+        .day-status {
+            font-size: 20px;
+            margin-top: 4px;
+        }
+
+        .month-selector {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .month-selector button {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            border: 2px solid var(--border);
+            background: white;
+            cursor: pointer;
+            font-size: 18px;
+            transition: all 0.3s;
+        }
+
+        .month-selector button:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+
+        .month-name {
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--dark);
+            min-width: 200px;
+            text-align: center;
+        }
+
+        .attendance-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 24px;
+        }
+
+        .attendance-table th {
+            padding: 14px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 13px;
+            color: var(--text);
+            text-transform: uppercase;
+            background: var(--light);
+            border-bottom: 2px solid var(--border);
+        }
+
+        .attendance-table td {
+            padding: 16px 14px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .status-badge {
+            padding: 6px 14px;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 600;
+            display: inline-block;
+        }
+
+        .status-present {
+            background: rgba(16, 185, 129, 0.1);
+            color: var(--success);
+        }
+
+        .status-absent {
+            background: rgba(239, 68, 68, 0.1);
+            color: var(--danger);
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 10px;
+            background: var(--border);
+            border-radius: 5px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--success), var(--primary));
+            transition: width 0.5s ease;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 12px;
+            }
+
+            .header {
+                flex-direction: column;
+                gap: 16px;
+                padding: 20px 16px;
+            }
+
+            .header-left {
+                flex-direction: column;
+                align-items: flex-start;
+                width: 100%;
+            }
+
+            .logo {
+                font-size: 24px;
+            }
+
+            .user-info {
+                padding-left: 0;
+                border-left: none;
+                padding-top: 12px;
+                border-top: 2px solid var(--border);
+                width: 100%;
+            }
+
+            .logout-btn {
+                width: 100%;
+            }
+
+            .profile-section {
+                flex-direction: column;
+                padding: 28px 20px;
+                text-align: center;
+            }
+
+            .profile-avatar {
+                width: 80px;
+                height: 80px;
+                font-size: 32px;
+            }
+
+            .profile-details h2 {
+                font-size: 24px;
+            }
+
+            .profile-details p {
+                font-size: 14px;
+            }
+
+            .stats-grid {
+                grid-template-columns: 1fr;
+                gap: 16px;
+            }
+
+            .section {
+                padding: 20px 16px;
+            }
+
+            .section-title {
+                font-size: 20px;
+            }
+
+            .month-selector {
+                gap: 12px;
+            }
+
+            .month-name {
+                font-size: 16px;
+                min-width: 150px;
+            }
+
+            .calendar-grid {
+                gap: 4px;
+            }
+
+            .calendar-day {
+                font-size: 12px;
+            }
+
+            .day-number {
+                font-size: 14px;
+            }
+
+            .day-status {
+                font-size: 16px;
+            }
+
+            .attendance-table {
+                display: block;
+                overflow-x: auto;
+            }
+
+            .attendance-table table {
+                min-width: 500px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .logo-icon {
+                width: 40px;
+                height: 40px;
+                font-size: 20px;
+            }
+
+            .stat-value {
+                font-size: 32px;
+            }
+
+            .stat-icon {
+                width: 48px;
+                height: 48px;
+                font-size: 24px;
+            }
+
+            .calendar-grid {
+                gap: 2px;
+            }
+
+            .day-number {
+                font-size: 12px;
+            }
+
+            .day-status {
+                font-size: 14px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="header-left">
+                <div class="logo">
+                    <div class="logo-icon">📚</div>
+                    AttendEase
+                </div>
+                <div class="user-info">
+                    <div class="user-name" id="studentName">Student</div>
+                    <div class="user-role">View Attendance</div>
+                </div>
+            </div>
+            <button class="logout-btn" onclick="logout()">🚪 Logout</button>
+        </div>
+
+        <div class="profile-section">
+            <div class="profile-avatar" id="profileAvatar">ST</div>
+            <div class="profile-details">
+                <h2 id="profileName">Student Name</h2>
+                <p id="profileDetails">Roll No: R001 | Class 10A</p>
+            </div>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-header">
+                    <div>
+                        <div class="stat-value" id="totalDays">0</div>
+                        <div class="stat-label">Total Lectures</div>
+                    </div>
+                    <div class="stat-icon pink">📅</div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-header">
+                    <div>
+                        <div class="stat-value" id="presentDays">0</div>
+                        <div class="stat-label">Lectures Attended</div>
+                    </div>
+                    <div class="stat-icon green">✓</div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-header">
+                    <div>
+                        <div class="stat-value" id="absentDays">0</div>
+                        <div class="stat-label">Lectures Missed</div>
+                    </div>
+                    <div class="stat-icon red">✗</div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-header">
+                    <div>
+                        <div class="stat-value" id="attendancePercentage">0%</div>
+                        <div class="stat-label">Attendance Rate</div>
+                    </div>
+                    <div class="stat-icon green">📊</div>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progressFill" style="width: 0%"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2 class="section-title">Monthly Attendance Calendar</h2>
+            <div class="month-selector">
+                <button onclick="changeMonth(-1)">‹</button>
+                <div class="month-name" id="monthName">January 2024</div>
+                <button onclick="changeMonth(1)">›</button>
+            </div>
+            <div class="calendar-grid" id="calendarGrid">
+                <!-- Dynamic calendar -->
+            </div>
+        </div>
+
+        <div class="section">
+            <h2 class="section-title">Recent Attendance</h2>
+            <table class="attendance-table">
+                <thead>
+                    <tr>
+                        <th>Date & Subject</th>
+                        <th>Day & Time</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody id="recentAttendance">
+                    <!-- Dynamic content -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script src="/static/js/student-script.js"></script>
+</body>
+</html>
