@@ -1,27 +1,8 @@
-// Initialize data from localStorage or create default data
-let students = [
-    { id: 1, name: 'John Doe', email: 'john@example.com', roll: 'R001', semester: 1, section: 'A' },
-    { id: 2, name: 'Jane Smith', email: 'jane@example.com', roll: 'R002', semester: 1, section: 'A' },
-    { id: 3, name: 'Mike Johnson', email: 'mike@example.com', roll: 'R003', semester: 1, section: 'B' },
-    { id: 4, name: 'Sarah Williams', email: 'sarah@example.com', roll: 'R004', semester: 2, section: 'A' },
-    { id: 5, name: 'David Brown', email: 'david@example.com', roll: 'R005', semester: 2, section: 'B' }
-];
-
-let teachers = JSON.parse(localStorage.getItem('teachers')) || [
-    { id: 1, name: 'Dr. Robert Brown', email: 'robert@example.com', subject: 'Mathematics', phone: '1234567890' },
-    { id: 2, name: 'Prof. Emily Davis', email: 'emily@example.com', subject: 'Science', phone: '0987654321' },
-    { id: 3, name: 'Mr. David Wilson', email: 'david@example.com', subject: 'English', phone: '5555555555' }
-];
-
-let attendance = JSON.parse(localStorage.getItem('attendance')) || {};
-
-// Save data to localStorage
-function saveData() {
-    localStorage.setItem('students', JSON.stringify(students));
-    localStorage.setItem('teachers', JSON.stringify(teachers));
-    localStorage.setItem('attendance', JSON.stringify(attendance));
+// Toggle sidebar for mobile - defined early to avoid errors
+function toggleSidebar() {
+    const sidebar = document.querySelector('.sidebar');
+    sidebar.classList.toggle('active');
 }
-
 // Show section
 function showSection(section, event) {
     // Hide all sections
@@ -92,7 +73,7 @@ function renderStudentsTable() {
             tbody.innerHTML = data.map(student => `
             <tr>
                 <td>${student.name}</td>
-                <td>${student.email}</td>
+                <td>${student.course_name}</td>
                 <td>${student.semester}</td>
                 <td>${student.section}</td>
                 <td>${student.roll}</td>
@@ -135,10 +116,10 @@ function renderTeachersTable() {
 // Add student
 function addStudent(event) {
     event.preventDefault();
-    
     const newStudent = {
         name: document.getElementById('studentName').value,
         email: document.getElementById('studentEmail').value,
+        course_name: document.getElementById('studentCourseName').value,
         semester: document.getElementById('studentSemester').value,
         section: document.getElementById('studentSec').value,
         roll: document.getElementById('studentRoll').value
@@ -191,6 +172,7 @@ function addTeacher(event) {
 
 // Edit functions (simplified - you can expand these)
 function editStudent(id) {
+    document.getElementById('editStudentId').value = id;
     fetch("/get-student-data", {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -202,6 +184,7 @@ function editStudent(id) {
     .then(data => {
         document.getElementById('editStudentName').value = data.name;
         document.getElementById('editStudentEmail').value = data.email;
+        document.getElementById('editCourseName').value = data.course_name;
         document.getElementById('editStudentSemester').value = data.semester;
         document.getElementById('editStudentSec').value = data.section;
         document.getElementById('editStudentRoll').value = data.roll;
@@ -213,8 +196,10 @@ function editStudent(id) {
 function saveEditStudent(event){
     event.preventDefault();
     if (confirm('Are you sure you want to edit ?')) {
+        student_id = document.getElementById('editStudentId').value
         student_name = document.getElementById('editStudentName').value
         email = document.getElementById('editStudentEmail').value
+        course_name = document.getElementById('editCourseName').value 
         semester = document.getElementById('editStudentSemester').value
         section = document.getElementById('editStudentSec').value
         roll = document.getElementById('editStudentRoll').value
@@ -222,8 +207,10 @@ function saveEditStudent(event){
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
+                student_id,
                 student_name,
                 email,
+                course_name,
                 section,
                 semester,
                 roll
@@ -237,29 +224,11 @@ function saveEditStudent(event){
         })  
         event.target.reset; 
     }
-    
-}
-
-// Delete student
-function deleteStudent(id) {
-    if (confirm('Are you sure you want to delete this student?')) {
-        fetch('/delete-student-data',{
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                id
-            })
-        })
-        .then(response => response.json())
-        .then(data => {
-            alert(data.message);
-            renderStudentsTable();  
-        })  
-    }
 }
 
 function editTeacher(id) {
-    fetch("/get-teacher-data", {
+    document.getElementById('editTeacherId').value = id,
+    fetch('/get-teacher-data', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -270,123 +239,168 @@ function editTeacher(id) {
     .then(data => {
         document.getElementById('editTeacherName').value = data.name;
         document.getElementById('editTeacherEmail').value = data.email;
-        document.getElementById('editTeacherPhone').value = data.phone;
         document.getElementById('editTeacherSubject').value = data.subject;
-        }
-    )
-    openModal('editTeacherModal');
+        document.getElementById('editTeacherPhone').value = data.phone;
+    })
+    openModal('editTeacherModal')
 }
 
 function saveEditTeacher(event){
     event.preventDefault();
-    if (confirm('Are you sure you want to edit ?')) {
-        teacher_name = document.getElementById('editTeacherName').value
-        email = document.getElementById('editTeacherEmail').value
-        subject = document.getElementById('editTeacherSubject').value
-        phone = document.getElementById('editTeacherPhone').value
-        fetch('/save-teacher-data',{
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                teacher_name,
-                email,
-                subject,
-                phone
-            })
-        })
-        .then(response => response.json())
-        .then(data => {
-            alert(data.message);
-            closeModal('editTeacherModal'); 
-            renderTeachersTable();   
-        })  
-        event.target.reset; 
+    const editTeacher = {
+        teacher_id: document.getElementById('editTeacherId').value,
+        teacher_name: document.getElementById('editTeacherName').value,
+        email: document.getElementById('editTeacherEmail').value,
+        subject: document.getElementById('editTeacherSubject').value,
+        phone: document.getElementById('editTeacherPhone').value
     }
+    fetch('/save-teacher-data',{
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            editTeacher
+        })
+    })
+    .then(res => res.json())
+    .then(data => {
+        alert(data.message)
+    })
+    .catch(() => alert('Server error'));
+    closeModal('editTeacherModal');
+    renderTeachersTable();
 }
 
-// Delete teacher
+function deleteStudent(id) {
+    if (!confirm('Are you sure you want to delete this student?')) return;
+    
+    fetch('/delete-student-data',{
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            id
+        })
+    })
+    .then(res => res.json())
+    .then(data => {
+        alert(data.message)
+    })
+    .catch(() => alert('Server error'));
+    renderStudentsTable();
+}
+
 function deleteTeacher(id) {
-    if (confirm('Are you sure you want to delete this teacher?')) {
-        fetch('/delete-teacher-data',{
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                id
-            })
+    if (!confirm('Are you sure you want to delete this teacher?')) return;
+
+    fetch('/delete-teacher-data',{
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            id
         })
-        .then(response => response.json())
-        .then(data => {
-            alert(data.message);
-            renderTeachersTable();  
-        })  
-    }
+    })
+    .then(res => res.json())
+    .then(data => {
+        alert(data.message)
+    })
+    .catch(() => alert('Server error'));
+    renderTeachersTable();
 }
 
-// Set today's date for attendance
+// Attendance functions
 function setTodayDate() {
     const today = new Date().toISOString().split('T')[0];
     document.getElementById('attendanceDate').value = today;
 }
 
-// Load attendance for selected date
+function renderAttendanceTable(data, semester, section, course) {
+    const tbody = document.getElementById('attendanceTable');
+    tbody.innerHTML = data.map(student => `
+        <tr>
+            <td>${student.student_name}</td>
+            <td>${student.roll_no}</td>
+            <td>${semester}</td>
+            <td>${section}</td>
+            <td>
+                <span class="status-badge status-${student.status}">${student.status.toUpperCase()}</span>
+            </td>
+            <td>
+                <div class="action-btns">
+                    <button class="action-btn ${student.status === 'present' ? 'btn-delete' : 'btn-edit'}" 
+                            onclick="toggleAttendance(${student.student_id}, '${student.date}','${student.status}')">
+                        ${student.status === 'present' ? 'Mark Absent' : 'Mark Present'}
+                    </button>
+                </div>
+            </td>
+        </tr>
+    `).join('');
+    if (data.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 20px; color: var(--text); opacity: 0.5;">No students found for Course ' + course + ': Semester '+ semester  + ', Section - ' + section + '</td></tr>';
+    }
+}
+
+function toggleAttendance(studentId, date, status) {
+    fetch('/toggle-attendance', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+                studentId,
+                status,
+                date,
+                
+        })
+    })
+    .then(res => res.json())
+    .then(data => {
+        loadAttendance();
+    })
+    .catch(() => alert('Server error'));
+    
+    
+}
+
+function searchStudentInAttendance() {
+    const searchTerm = document.getElementById('searchStudent').value.toLowerCase();
+    const date = document.getElementById('attendanceDate').value;
+    const course = document.getElementById('course').value;
+    const semester = document.getElementById('semester').value;
+    const section = document.getElementById('section').value;
+    const tbody = document.getElementById('attendanceTable');
+    fetch('/view-attendance',{
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            date,
+            course,
+            semester,
+            section,
+            searchTerm
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        renderAttendanceTable(data, semester, section, course)
+    })
+}
+
 function loadAttendance() {
     const date = document.getElementById('attendanceDate').value;
-    if (!attendance[date]) {
-        attendance[date] = students.map(student => ({
-            studentId: student.id,
-            status: 'absent'
-        }));
-        saveData();
-    }
-    
-    renderAttendanceTable(date);
-}
-
-// Render attendance table
-function renderAttendanceTable(date) {
-    const tbody = document.getElementById('attendanceTable');
-    const dateAttendance = attendance[date] || [];
-    
-    tbody.innerHTML = students.map(student => {
-        const record = dateAttendance.find(a => a.studentId === student.id) || { status: 'absent' };
-        return `
-            <tr>
-                <td>${student.name}</td>
-                <td>${student.roll}</td>
-                <td>${student.semester}</td>
-                <td>${student.section}</td>
-                <td>
-                    <span class="status-badge status-${record.status}">
-                        ${record.status.charAt(0).toUpperCase() + record.status.slice(1)}
-                    </span>
-                </td>
-                <td>
-                    <div class="action-btns">
-                        <button class="action-btn btn-edit" onclick="toggleAttendance(${student.id}, '${date}')">
-                            Toggle
-                        </button>
-                    </div>
-                </td>
-            </tr>
-        `;
-    }).join('');
-}
-
-// Toggle attendance
-function toggleAttendance(studentId, date) {
-    if (!attendance[date]) {
-        attendance[date] = [];
-    }
-    
-    const record = attendance[date].find(a => a.studentId === studentId);
-    if (record) {
-        record.status = record.status === 'present' ? 'absent' : 'present';
-    } else {
-        attendance[date].push({ studentId, status: 'present' });
-    }
-    
-    saveData();
-    renderAttendanceTable(date);
+    const semester = document.getElementById('semester').value;
+    const section = document.getElementById('section').value;
+    const course = document.getElementById('courseName').value;
+    fetch('/view-attendance',{
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            date,
+            course,
+            semester,
+            section
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        renderAttendanceTable(data, semester, section, course)
+    })
 }
 
 // Set report dates
@@ -397,142 +411,125 @@ function setReportDates() {
     document.getElementById('monthlyReportDate').value = thisMonth;
 }
 
-// Generate daily report
+// Generate daily report - UPDATED WITH RESPONSIVE STYLING
 function generateDailyReport() {
     const date = document.getElementById('dailyReportDate').value;
-    const dateAttendance = attendance[date] || [];
-    
-    const presentCount = dateAttendance.filter(a => a.status === 'present').length;
-    const absentCount = students.length - presentCount;
-    const attendanceRate = students.length > 0 ? ((presentCount / students.length) * 100).toFixed(1) : 0;
-    
-    const reportOutput = document.getElementById('reportOutput');
-    reportOutput.style.display = 'block';
-    reportOutput.innerHTML = `
-        <div style="padding: 24px; background: white; border-radius: 12px; border: 1px solid var(--border);">
-            <h3 style="margin-bottom: 20px; color: var(--dark);">Daily Attendance Report - ${date}</h3>
-            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 24px;">
-                <div style="padding: 16px; background: rgba(16, 185, 129, 0.1); border-radius: 8px;">
-                    <div style="font-size: 24px; font-weight: 700; color: var(--success);">${presentCount}</div>
-                    <div style="font-size: 14px; color: var(--text);">Present</div>
+    fetch('/daily-report',{
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            date
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        const reportOutput = document.getElementById('reportOutput');
+        reportOutput.style.display = 'block';
+        reportOutput.innerHTML = `
+            <div class="report-container" style="padding: 24px; background: white; border-radius: 12px; border: 1px solid var(--border); overflow-x: auto;">
+                <h3 style="margin-bottom: 20px; color: var(--dark); font-size: clamp(16px, 4vw, 20px);">📅 Daily Attendance Report - ${date}</h3>
+                <div class="report-stats-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 16px; margin-bottom: 24px;">
+                    <div style="padding: 16px; background: rgba(16, 185, 129, 0.1); border-radius: 8px;">
+                        <div style="font-size: clamp(20px, 5vw, 24px); font-weight: 700; color: var(--success);">${data["presentStudents"]}</div>
+                        <div style="font-size: clamp(12px, 3vw, 14px); color: var(--text);">Present</div>
+                    </div>
+                    <div style="padding: 16px; background: rgba(239, 68, 68, 0.1); border-radius: 8px;">
+                        <div style="font-size: clamp(20px, 5vw, 24px); font-weight: 700; color: var(--danger);">${data["absentStudents"]}</div>
+                        <div style="font-size: clamp(12px, 3vw, 14px); color: var(--text);">Absent</div>
+                    </div>
+                    <div style="padding: 16px; background: rgba(99, 102, 241, 0.1); border-radius: 8px;">
+                        <div style="font-size: clamp(20px, 5vw, 24px); font-weight: 700; color: var(--primary);">${data["attendancePercent"]}%</div>
+                        <div style="font-size: clamp(12px, 3vw, 14px); color: var(--text);">Attendance Rate</div>
+                    </div>
                 </div>
-                <div style="padding: 16px; background: rgba(239, 68, 68, 0.1); border-radius: 8px;">
-                    <div style="font-size: 24px; font-weight: 700; color: var(--danger);">${absentCount}</div>
-                    <div style="font-size: 14px; color: var(--text);">Absent</div>
-                </div>
-                <div style="padding: 16px; background: rgba(99, 102, 241, 0.1); border-radius: 8px;">
-                    <div style="font-size: 24px; font-weight: 700; color: var(--primary);">${attendanceRate}%</div>
-                    <div style="font-size: 14px; color: var(--text);">Attendance Rate</div>
+                <div class="table-wrapper" style="width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch;">
+                    <table style="width: 100%; border-collapse: collapse; min-width: 600px;">
+                        <thead>
+                            <tr style="background: var(--light);">
+                                <th style="padding: 12px 8px; text-align: left; font-size: clamp(10px, 2.5vw, 13px); white-space: nowrap;">Student Name</th>
+                                <th style="padding: 12px 8px; text-align: left; font-size: clamp(10px, 2.5vw, 13px); white-space: nowrap;">Roll No</th>
+                                <th style="padding: 12px 8px; text-align: left; font-size: clamp(10px, 2.5vw, 13px); white-space: nowrap;">Semester</th>
+                                <th style="padding: 12px 8px; text-align: left; font-size: clamp(10px, 2.5vw, 13px); white-space: nowrap;">Section</th>
+                                <th style="padding: 12px 8px; text-align: left; font-size: clamp(10px, 2.5vw, 13px); white-space: nowrap;">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${data["data"].map(student => {
+                                return `
+                                    <tr>
+                                        <td style="padding: 12px 8px; border-bottom: 1px solid var(--border); font-size: clamp(10px, 2.5vw, 14px);">${student.student_name}</td>
+                                        <td style="padding: 12px 8px; border-bottom: 1px solid var(--border); font-size: clamp(10px, 2.5vw, 14px);">${student.roll_no}</td>
+                                        <td style="padding: 12px 8px; border-bottom: 1px solid var(--border); font-size: clamp(10px, 2.5vw, 14px);">${student.semester}</td>
+                                        <td style="padding: 12px 8px; border-bottom: 1px solid var(--border); font-size: clamp(10px, 2.5vw, 14px);">${student.section}</td>
+                                        <td style="padding: 12px 8px; border-bottom: 1px solid var(--border);">
+                                            <span class="status-badge status-${student.status}" style="padding: 4px 8px; border-radius: 6px; font-size: clamp(9px, 2vw, 12px); font-weight: 600; white-space: nowrap;">${student.status.toUpperCase()}</span>
+                                        </td>
+                                    </tr>
+                                `;
+                            }).join('')}
+                        </tbody>
+                    </table>
                 </div>
             </div>
-            <table style="width: 100%; border-collapse: collapse;">
-                <thead>
-                    <tr style="background: var(--light);">
-                        <th style="padding: 12px; text-align: left;">Student Name</th>
-                        <th style="padding: 12px; text-align: left;">Roll No</th>
-                        <th style="padding: 12px; text-align: left;">Semester</th>
-                        <th style="padding: 12px; text-align: left;">Section</th>
-                        <th style="padding: 12px; text-align: left;">Status</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    ${students.map(student => {
-                        const record = dateAttendance.find(a => a.studentId === student.id) || { status: 'absent' };
-                        return `
-                            <tr>
-                                <td style="padding: 12px; border-bottom: 1px solid var(--border);">${student.name}</td>
-                                <td style="padding: 12px; border-bottom: 1px solid var(--border);">${student.roll}</td>
-                                <td style="padding: 12px; border-bottom: 1px solid var(--border);">${student.semester}</td>
-                                <td style="padding: 12px; border-bottom: 1px solid var(--border);">${student.section}</td>
-                                <td style="padding: 12px; border-bottom: 1px solid var(--border);">
-                                    <span class="status-badge status-${record.status}">${record.status.toUpperCase()}</span>
-                                </td>
-                            </tr>
-                        `;
-                    }).join('')}
-                </tbody>
-            </table>
-        </div>
-    `;
+        `;
+    })
+    
+    
 }
 
-// Generate monthly report
+// Generate monthly report - UPDATED WITH RESPONSIVE STYLING
 function generateMonthlyReport() {
     const month = document.getElementById('monthlyReportDate').value;
-    const [year, monthNum] = month.split('-');
+    fetch('/monthly-report',{
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            month
+        })
+    })
+    .then(response => response.json())
+    .then(data => {            
+            const reportOutput = document.getElementById('reportOutput');
+            reportOutput.style.display = 'block';
+            reportOutput.innerHTML = `
+                <div class="report-container" style="padding: 24px; background: white; border-radius: 12px; border: 1px solid var(--border); overflow-x: auto;">
+                    <h3 style="margin-bottom: 20px; color: var(--dark); font-size: clamp(16px, 4vw, 20px);">📊 Monthly Attendance Report - ${month}</h3>
+                    <div style="padding: 20px; background: rgba(99, 102, 241, 0.1); border-radius: 8px; margin-bottom: 24px;">
+                        <div style="font-size: clamp(24px, 6vw, 32px); font-weight: 700; color: var(--primary); margin-bottom: 4px;">${data["overall_attendance"]}%</div>
+                        <div style="font-size: clamp(12px, 3vw, 14px); color: var(--text);">Overall Attendance Rate</div>
+                    </div>
+                    <div class="table-wrapper" style="width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch;">
+                        <table style="width: 100%; border-collapse: collapse; min-width: 600px;">
+                            <thead>
+                                <tr style="background: var(--light);">
+                                    <th style="padding: 12px 8px; text-align: left; font-size: clamp(10px, 2.5vw, 13px); white-space: nowrap;">Student Name</th>
+                                    <th style="padding: 12px 8px; text-align: left; font-size: clamp(10px, 2.5vw, 13px); white-space: nowrap;">Roll No</th>
+                                    <th style="padding: 12px 8px; text-align: center; font-size: clamp(10px, 2.5vw, 13px); white-space: nowrap;">Present Lectures</th>
+                                    <th style="padding: 12px 8px; text-align: center; font-size: clamp(10px, 2.5vw, 13px); white-space: nowrap;">Total Lectures</th>
+                                    <th style="padding: 12px 8px; text-align: center; font-size: clamp(10px, 2.5vw, 13px); white-space: nowrap;">Attendance %</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${data["data"].map(student => `
+                                    <tr>
+                                        <td style="padding: 12px 8px; border-bottom: 1px solid var(--border); font-size: clamp(10px, 2.5vw, 14px);">${student.student_name}</td>
+                                        <td style="padding: 12px 8px; border-bottom: 1px solid var(--border); font-size: clamp(10px, 2.5vw, 14px);">${student.roll_no}</td>
+                                        <td style="padding: 12px 8px; border-bottom: 1px solid var(--border); text-align: center; font-size: clamp(10px, 2.5vw, 14px);">${student.present_count}</td>
+                                        <td style="padding: 12px 8px; border-bottom: 1px solid var(--border); text-align: center; font-size: clamp(10px, 2.5vw, 14px);">${student.total_classes}</td>
+                                        <td style="padding: 12px 8px; border-bottom: 1px solid var(--border); text-align: center;">
+                                            <span style="font-weight: 600; color: ${student.attendance_rate >= 75 ? 'var(--success)' : 'var(--danger)'}; font-size: clamp(10px, 2.5vw, 14px);">
+                                                ${student.attendance_rate}%
+                                            </span>
+                                        </td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            `;
+    })
     
-    // Get all dates in the month
-    const daysInMonth = new Date(year, monthNum, 0).getDate();
-    const dates = [];
-    for (let i = 1; i <= daysInMonth; i++) {
-        const date = `${year}-${monthNum}-${String(i).padStart(2, '0')}`;
-        dates.push(date);
-    }
-    
-    // Calculate monthly stats
-    const studentStats = students.map(student => {
-        let presentDays = 0;
-        let totalDays = 0;
-        
-        dates.forEach(date => {
-            if (attendance[date]) {
-                totalDays++;
-                const record = attendance[date].find(a => a.studentId === student.id);
-                if (record && record.status === 'present') {
-                    presentDays++;
-                }
-            }
-        });
-        
-        return {
-            ...student,
-            presentDays,
-            totalDays,
-            attendanceRate: totalDays > 0 ? ((presentDays / totalDays) * 100).toFixed(1) : 0
-        };
-    });
-    
-    const totalPresent = studentStats.reduce((sum, s) => sum + s.presentDays, 0);
-    const totalPossible = students.length * dates.filter(d => attendance[d]).length;
-    const overallRate = totalPossible > 0 ? ((totalPresent / totalPossible) * 100).toFixed(1) : 0;
-    
-    const reportOutput = document.getElementById('reportOutput');
-    reportOutput.style.display = 'block';
-    reportOutput.innerHTML = `
-        <div style="padding: 24px; background: white; border-radius: 12px; border: 1px solid var(--border);">
-            <h3 style="margin-bottom: 20px; color: var(--dark);">Monthly Attendance Report - ${month}</h3>
-            <div style="padding: 20px; background: rgba(99, 102, 241, 0.1); border-radius: 8px; margin-bottom: 24px;">
-                <div style="font-size: 32px; font-weight: 700; color: var(--primary); margin-bottom: 4px;">${overallRate}%</div>
-                <div style="font-size: 14px; color: var(--text);">Overall Attendance Rate</div>
-            </div>
-            <table style="width: 100%; border-collapse: collapse;">
-                <thead>
-                    <tr style="background: var(--light);">
-                        <th style="padding: 12px; text-align: left;">Student Name</th>
-                        <th style="padding: 12px; text-align: left;">Roll No</th>
-                        <th style="padding: 12px; text-align: center;">Present Days</th>
-                        <th style="padding: 12px; text-align: center;">Total Days</th>
-                        <th style="padding: 12px; text-align: center;">Attendance %</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    ${studentStats.map(student => `
-                        <tr>
-                            <td style="padding: 12px; border-bottom: 1px solid var(--border);">${student.name}</td>
-                            <td style="padding: 12px; border-bottom: 1px solid var(--border);">${student.roll}</td>
-                            <td style="padding: 12px; border-bottom: 1px solid var(--border); text-align: center;">${student.presentDays}</td>
-                            <td style="padding: 12px; border-bottom: 1px solid var(--border); text-align: center;">${student.totalDays}</td>
-                            <td style="padding: 12px; border-bottom: 1px solid var(--border); text-align: center;">
-                                <span style="font-weight: 600; color: ${student.attendanceRate >= 75 ? 'var(--success)' : 'var(--danger)'}">
-                                    ${student.attendanceRate}%
-                                </span>
-                            </td>
-                        </tr>
-                    `).join('')}
-                </tbody>
-            </table>
-        </div>
-    `;
 }
 
 // Modal functions
@@ -561,12 +558,6 @@ function logout() {
 window.addEventListener('DOMContentLoaded', () => {
     updateDashboard();
 });
-
-// Toggle sidebar for mobile
-function toggleSidebar() {
-    const sidebar = document.querySelector('.sidebar');
-    sidebar.classList.toggle('active');
-}
 
 // Close sidebar when clicking outside on mobile
 document.addEventListener('click', function(event) {

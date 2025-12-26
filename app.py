@@ -1,9 +1,10 @@
 from flask import Flask, request, jsonify, session, render_template, url_for, redirect
 from flask_bcrypt import Bcrypt
 from dotenv import load_dotenv
-from datetime import date
+from datetime import date, datetime
 from config import Config
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy import extract, func, case
 from models import db ,User, Teacher, Student, Attendance
 import os
 
@@ -22,10 +23,135 @@ ADMIN_PASSWORD_HASH = bcrypt.generate_password_hash(
     os.getenv("ADMIN_PASSWORD")
 ).decode()
 
-@app.route('/logout')
+@app.route("/logout")
 def logout():
     session.clear()  
     return redirect(url_for('commence'))
+
+@app.route("/monthly-report", methods=["POST"])
+def monthly_report():
+    data = request.json
+    year_month = data['month']
+    date_obj = datetime.strptime(year_month, "%Y-%m")
+    month = date_obj.strftime("%m")
+    year = date_obj.strftime("%Y")
+    
+    records = (
+        db.session.query(
+            Student.name.label("student_name"),
+            Student.roll_no,
+            func.sum(case((Attendance.status == "present", 1), else_=0)).label("present_count"),
+            func.count(Attendance.id).label("total_classes")
+        )
+        .join(Student, Student.id == Attendance.student_id)
+        .filter(extract('month', Attendance.date) == month)   # e.g. 12 for December
+        .filter(extract('year', Attendance.date) == year)     # to avoid mixing years
+        .group_by(Student.id, Student.name, Student.roll_no)
+        .all()
+    )
+
+    all_students = []
+    all_students_present = 0
+    all_students_total_classes = 0
+    for student in records:
+        all_students_present += student.present_count
+        all_students_total_classes += student.total_classes
+        all_students.append({
+        "student_name": student.student_name,
+        "roll_no": student.roll_no,
+        "present_count": student.present_count,
+        "total_classes": student.total_classes,
+        "attendance_rate": (student.present_count / student.total_classes) * 100
+        })
+    overall_attendance = (all_students_present / all_students_total_classes) * 100
+    if len(all_students) < 1: 
+        return jsonify({"message": "Student cannot be found!"}), 503
+    return jsonify({"data": all_students, "overall_attendance": overall_attendance, "message": "Daily report retrive successfully."}), 201
+
+@app.route("/daily-report", methods=["POST"])
+def daily_report():
+    data = request.json
+    date = data['date']
+    py_date = datetime.strptime(date, "%Y-%m-%d").date()
+
+    records = (
+        db.session.query(Attendance,Student)
+        .join(Student, Student.id == Attendance.student_id)
+        .filter(Attendance.date == py_date)
+        .all()
+    )
+    all_students = []
+    for attendance, student in records:
+        all_students.append({
+            "student_name": student.name,
+            "roll_no": student.roll_no,
+            "semester": student.semester,
+            "section": student.section,
+            "status": attendance.status
+        })
+    present_stud = Attendance.query.filter_by(date=py_date, status="present").count()
+    absent_stud = Attendance.query.filter_by(date=py_date, status="absent").count()
+    todays_att =  (present_stud / len(all_students)) * 100 if len(all_students) > 0 else 0
+
+    if len(all_students) < 1:
+        return jsonify({"message": "Students not found!"}), 503
+    return jsonify({"data": all_students, "attendancePercent": todays_att, "presentStudents": present_stud, "absentStudents": absent_stud, "message": "Daily report retrive successfully."}), 201
+
+@app.route("/toggle-attendance", methods=["POST"])
+def toggle_attendance():
+    data = request.json
+    student_id = data['studentId']
+    date = data['date']
+    status = data['status']
+    py_date = datetime.strptime(date, "%Y-%m-%d").date()
+    student_att = db.session.query(Attendance).filter_by(student_id = student_id, date=py_date).first()
+    if not student_att:
+        return jsonify({"message": "Student attendance not found!"}), 404
+    student_att.status = 'present' if status == 'absent' else 'absent'
+    db.session.commit()
+    return jsonify({"message": "Attendance toggled successfully."}), 201
+
+@app.route("/view-attendance", methods=["POST"])
+def view_attendance():
+    data = request.json
+    course = data['course']
+    section = data['section']
+    semester = data['semester']
+    date = data['date']
+    py_date = datetime.strptime(date, "%Y-%m-%d").date()
+
+    # Query attendance with filters
+    records = (
+        db.session.query(Attendance, Student)
+        .join(Student, Attendance.student_id == Student.id)
+        .filter(Student.course_name == course)
+        .filter(Student.semester == semester)
+        .filter(Student.section == section)
+        .filter(Attendance.date == py_date)
+    )
+
+    if data.get('searchTerm'):
+        records = records.filter(Student.name.ilike(f"{data['searchTerm']}%"))
+
+    querys = records.all()
+
+    # Format response
+    result = []
+    for attendance, student in querys:
+        result.append({
+            "student_id": attendance.student_id,
+            "student_name": student.name,
+            "course_name": student.course_name,
+            "roll_no": student.roll_no,
+            "semester": student.semester,
+            "section": student.section,
+            "date": attendance.date.strftime("%Y-%m-%d"),
+            "status": attendance.status
+        })
+
+    return jsonify(result), 201
+
+
 
 @app.route("/delete-teacher-data", methods=["POST"])
 def delete_teacher_data():
@@ -40,8 +166,9 @@ def delete_teacher_data():
 
 @app.route("/save-teacher-data", methods=["POST"])
 def save_teacher_data():
-    data = request.json
-    update_teacher = db.session.query(Teacher).filter_by(email=data['email']).first()
+    teacher_data = request.json
+    data = teacher_data['editTeacher']
+    update_teacher = db.session.query(Teacher).filter_by(id=data['teacher_id']).first()
     if not update_teacher:
         return jsonify({"message": "Student not found!"}), 404
     update_teacher.name = data['teacher_name']
@@ -127,11 +254,12 @@ def delete_student_data():
 @app.route("/save-student-data", methods=["POST"])
 def save_student_data():
     data = request.json
-    update_student = db.session.query(Student).filter_by(roll_no=data['roll']).first()
+    update_student = db.session.query(Student).filter_by(id=data['student_id']).first()
     if not update_student:
         return jsonify({"message": "Student not found!"}), 404
     update_student.name = data['student_name']
     update_student.email = data['email']
+    update_student.course_name = data['course_name']
     update_student.semester = data['semester']
     update_student.roll_no = data['roll']
     update_student.section = data['section']
@@ -148,6 +276,7 @@ def get_student_data():
         return jsonify({
             "name": student.name,
             "email": student.email,
+            "course_name": student.course_name,
             "semester": student.semester,
             "section": student.section,
             "roll": student.roll_no
@@ -161,7 +290,7 @@ def add_student():
         return jsonify({"message": "Invalid request body!"}), 400
     
     student_data = data["newStudent"]
-    required_fields = ['name', 'email', 'semester', 'section', 'roll']
+    required_fields = ['name', 'email', 'course_name', 'semester', 'section', 'roll']
     for field in required_fields:
         if field not in student_data or not student_data[field]:
             return jsonify({"message": f"{field} is required"}), 400
@@ -169,6 +298,7 @@ def add_student():
     new_student = Student(
         name=student_data['name'],
         email=student_data['email'],
+        course_name=student_data['course_name'],
         roll_no=student_data['roll'],
         semester=student_data['semester'],
         section=student_data['section']
@@ -196,7 +326,7 @@ def render_students():
         {
             "id": s.id,
             "name": s.name,
-            "email": s.email,
+            "course_name": s.course_name,
             "roll": s.roll_no,
             "semester": s.semester,
             "section": s.section
@@ -209,8 +339,8 @@ def render_dashboard():
     total_students = Student.query.count() 
     total_teachers = Teacher.query.count()
     today = date.today()
-    present_stud = Attendance.query.filter_by(date=today, status="Present").count()
-    absent_stud = Attendance.query.filter_by(date=today, status="Absent").count()
+    present_stud = Attendance.query.filter_by(date=today, status="present").count()
+    absent_stud = Attendance.query.filter_by(date=today, status="absent").count()
     todays_att =  (present_stud / total_students) * 100 if total_students > 0 else 0
     return jsonify({"Total_students": total_students, "Total_teachers": total_teachers, "Todays_att": todays_att, "Absent_stud": absent_stud})
 
@@ -235,14 +365,33 @@ def login():
         session["userRole"] = role
         session["user_id"] = user.id
         return jsonify({"success": True, "role": user.role})
+    elif role == "teacher":
+        teacher = User.query.filter_by(email=email).first()
+        if not teacher:
+            return jsonify(success=False, message="User not found"), 401
+        elif not  bcrypt.check_password_hash(teacher.password_hash, password):
+            return jsonify(success=False, message="Incorrect password"), 401
+        session["userRole"] = role
+        session["user_id"] = teacher.id
+        return jsonify({"success": True, "role": teacher.role})
+    elif role == "student":
+        student = User.query.filter_by(email=email).first()
+        if not student:
+            return jsonify(success=False, message="User not found"), 401
+        elif not  bcrypt.check_password_hash(student.password_hash, password):
+            return jsonify(success=False, message="Incorrect password"), 401
+        session["userRole"] = role
+        session["user_id"] = student.id
+        return jsonify({"success": True, "role": student.role})
+    
     
     return jsonify({"success": False, "message": "Invalid credentials"}), 401
 
 @app.route("/")
-def commence():
+def start():
     return render_template("login.html")
 
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(port=5000, debug=True)
 

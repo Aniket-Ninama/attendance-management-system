@@ -18,6 +18,7 @@ class Student(db.Model):
     name = db.Column(db.String(100), nullable=False)
     email = db.Column(db.String(100), unique=True)
     roll_no = db.Column(db.String(20), unique=True, nullable=False)
+    course_name = db.Column(db.String(100), nullable=False)
     semester = db.Column(db.Integer, nullable=False)
     section = db.Column(db.String(10))
 
