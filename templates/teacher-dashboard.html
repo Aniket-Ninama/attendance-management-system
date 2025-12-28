@@ -492,6 +492,17 @@
             <h2 class="section-title">📋 Start New Lecture</h2>
             <div class="lecture-setup">
                 <div class="form-group">
+                    <label>Course</label>
+                    <select id="course">
+                        <option value="">Select Section</option>
+                        <option value="BCA">BCA</option>
+                        <option value="BCOM">BCOM</option>
+                        <option value="CS">CS</option>
+                        <option value="ECO">ECO</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
                     <label>Semester</label>
                     <select id="semester">
                         <option value="">Select Semester</option>
@@ -513,18 +524,17 @@
                         <option value="A">Section A</option>
                         <option value="B">Section B</option>
                         <option value="C">Section C</option>
-                        <option value="D">Section D</option>
                     </select>
                 </div>
 
                 <div class="form-group">
                     <label>Subject</label>
-                    <input type="text" id="subject" placeholder="e.g., Mathematics, Physics">
+                    <input type="text" id="subject" readonly>
                 </div>
 
                 <div class="form-group">
                     <label>Date</label>
-                    <input type="date" id="lectureDate">
+                    <input type="date" id="lectureDate" readonly>
                 </div>
 
                 <div class="form-group">

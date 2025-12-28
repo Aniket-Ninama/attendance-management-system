@@ -184,20 +184,13 @@ function formatTime(time) {
 // Logout
 function logout() {
     if (confirm('Are you sure you want to logout?')) {
-        localStorage.removeItem('userRole');
-        localStorage.removeItem('username');
-        window.location.href = 'login.html';
+        window.location.href = '/logout';
     }
 }
 
 // Initialize on page load
 window.addEventListener('DOMContentLoaded', () => {
     // Check if user is logged in
-    const userRole = localStorage.getItem('userRole');
-    if (userRole !== 'student') {
-        window.location.href = 'login.html';
-    }
-
     initializeProfile();
     calculateStats();
     renderCalendar();

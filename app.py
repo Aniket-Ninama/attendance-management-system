@@ -26,7 +26,74 @@ ADMIN_PASSWORD_HASH = bcrypt.generate_password_hash(
 @app.route("/logout")
 def logout():
     session.clear()  
-    return redirect(url_for('commence'))
+    return redirect(url_for('start'))
+
+@app.route('/save-attendance', methods=["POST"])
+def save_attendance():
+    present_student_id = request.json['presentStudents']
+    absent_student_id = request.json['absentStudents']
+    date = request.json['date']
+    subject = request.json['subject']
+    py_date = datetime.strptime(date, "%Y-%m-%d").date()
+
+    # Add present students
+    if present_student_id:
+        for id in present_student_id:
+            new_attendance = Attendance(
+                student_id=id,
+                date=py_date,
+                status="present",
+                subject=subject
+            )
+            db.session.add(new_attendance)
+
+    # Add absent students
+    if absent_student_id:
+        for id in absent_student_id:
+            new_attendance = Attendance(
+                student_id=id,
+                date=py_date,
+                status="absent",
+                subject=subject
+            )
+            db.session.add(new_attendance)
+
+    try:
+        db.session.commit()
+    except IntegrityError:
+        db.session.rollback()
+        return jsonify({"success": False, "message": "Student attendance is already stored!"}), 503
+
+    return jsonify({"success": True}), 201
+
+@app.route('/start-attendance', methods=["POST"])
+def start_attendance():
+    data = request.json['currentLecture']
+    students_details = Student.query.filter_by(course_name=data['course'], semester=data['semester'], section=data['section']).all()
+    if not students_details:
+        return jsonify({"success": False})
+    records = []
+    for student in students_details:
+        records.append({
+            "id": student.id,
+            "name": student.name,
+            "email": student.email,
+            "course": student.course_name,
+            "semester": student.semester,
+            "section": student.section,
+            "roll": student.roll_no
+        })
+    return jsonify({"success": True, "students_data": records})
+
+@app.route('/rewrite-values')
+def rewrite_values():
+    user_role = session.get('userRole')
+    user_id = session.get("user_id")
+    user_details = User.query.filter_by(id=user_id, role=user_role).first()
+    teacher_details = Teacher.query.filter_by(email=user_details.email).first()
+    if not teacher_details:
+        return jsonify({"success": False, "message": "Cannot found!"})
+    return jsonify({"subject": teacher_details.subject, "success": True})
 
 @app.route("/monthly-report", methods=["POST"])
 def monthly_report():
@@ -150,8 +217,6 @@ def view_attendance():
         })
 
     return jsonify(result), 201
-
-
 
 @app.route("/delete-teacher-data", methods=["POST"])
 def delete_teacher_data():
@@ -344,40 +409,52 @@ def render_dashboard():
     todays_att =  (present_stud / total_students) * 100 if total_students > 0 else 0
     return jsonify({"Total_students": total_students, "Total_teachers": total_teachers, "Todays_att": todays_att, "Absent_stud": absent_stud})
 
+@app.route("/student-dashboard")
+def student_dashboard():
+    if session.get('userRole') != 'student':
+        return redirect(url_for('login'))
+    return render_template("student-dashboard.html")
+
+@app.route("/teacher-dashboard")
+def teacher_dashboard():
+    if session.get('userRole') != 'teacher':
+        return redirect(url_for('login'))
+    return render_template("teacher-dashboard.html")
+
 @app.route("/admin-dashboard")
 def admin_dashboard():
     if session.get('userRole') != 'admin':
         return redirect(url_for('login'))
     return render_template("admin-dashboard.html")
 
-@app.route("/login", methods=['POST'])
+@app.route("/login", methods=['POST','GET'])
 def login():
     data = request.json
     email = data.get("username")
     password = data.get("password")
     role = data.get("role")
     if role == "admin":
-        user = User.query.filter_by(email=email).first()
+        user = User.query.filter_by(email=email, role=role).first()
         if not user:
-            return jsonify(success=False, message="User not found"), 401
+            return jsonify(success=False, message="User not found. Check your selected role!"), 401
         elif not  bcrypt.check_password_hash(user.password_hash, password):
             return jsonify(success=False, message="Incorrect password"), 401
         session["userRole"] = role
         session["user_id"] = user.id
         return jsonify({"success": True, "role": user.role})
     elif role == "teacher":
-        teacher = User.query.filter_by(email=email).first()
+        teacher = User.query.filter_by(email=email, role=role).first()
         if not teacher:
-            return jsonify(success=False, message="User not found"), 401
+            return jsonify(success=False, message="User not found. Check your selected role!"), 401
         elif not  bcrypt.check_password_hash(teacher.password_hash, password):
             return jsonify(success=False, message="Incorrect password"), 401
         session["userRole"] = role
         session["user_id"] = teacher.id
         return jsonify({"success": True, "role": teacher.role})
     elif role == "student":
-        student = User.query.filter_by(email=email).first()
+        student = User.query.filter_by(email=email, role=role).first()
         if not student:
-            return jsonify(success=False, message="User not found"), 401
+            return jsonify(success=False, message="User not found. Check your selected role!"), 401
         elif not  bcrypt.check_password_hash(student.password_hash, password):
             return jsonify(success=False, message="Incorrect password"), 401
         session["userRole"] = role

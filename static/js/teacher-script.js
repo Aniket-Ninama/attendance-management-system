@@ -1,4 +1,5 @@
 // Get data from localStorage
+localStorage.setItem("present_students", JSON.stringify([]));
 let students = JSON.parse(localStorage.getItem('students')) || [];
 let lectureAttendance = JSON.parse(localStorage.getItem('lectureAttendance')) || [];
 
@@ -13,6 +14,7 @@ function setTodayDate() {
 
 // Start lecture
 function startLecture() {
+    const course = document.getElementById('course').value;
     const semester = document.getElementById('semester').value;
     const section = document.getElementById('section').value;
     const subject = document.getElementById('subject').value;
@@ -21,7 +23,7 @@ function startLecture() {
     const endTime = document.getElementById('endTime').value;
 
     // Validation
-    if (!semester || !section || !subject || !date || !startTime || !endTime) {
+    if (!course || !semester || !section || !startTime || !endTime) {
         alert('Please fill in all fields to start the lecture!');
         return;
     }
@@ -33,6 +35,7 @@ function startLecture() {
 
     // Set current lecture
     currentLecture = {
+        course,
         semester,
         section,
         subject,
@@ -42,53 +45,49 @@ function startLecture() {
         timestamp: new Date().toISOString()
     };
 
-    // Filter students by semester and section
-    const filteredStudents = students.filter(s => {
-        // Assuming student class format is "Semester X - Section Y"
-        return s.class.includes(`Semester ${semester}`) && s.class.includes(`Section ${section}`);
-    });
-
-    if (filteredStudents.length === 0) {
-        alert(`No students found for Semester ${semester}, Section ${section}. Please add students first from Admin panel.`);
-        return;
-    }
-
-    // Initialize attendance for filtered students
-    currentAttendance = {};
-    filteredStudents.forEach(student => {
-        currentAttendance[student.id] = 'absent';
-    });
-
-    // Display lecture info
-    displayLectureInfo();
+    fetch('/start-attendance', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                currentLecture
+            })
+        }
+    )
+    .then(response => response.json())
+    .then(data => {
+        if (data.success){
+            displayLectureInfo(semester, section, subject, date, startTime, endTime);
+            document.getElementById('attendanceSection').style.display = 'block';
+            document.getElementById('lectureInfo').classList.add('active');
+            document.getElementById('statsSummary').classList.add('active');
+            document.getElementById('bulkActions').classList.add('active');
+            document.getElementById('attendanceGrid').classList.add('active');
+            document.getElementById('saveSection').classList.add('active');
+            renderAttendanceGrid(data.students_data);
+            updateStats(data.students_data);
+            // Scroll to attendance section
+            document.getElementById('attendanceSection').scrollIntoView({ behavior: 'smooth' });
+        }
+        else{
+            alert(`Students are not found for semester ${semester} - section ${section}!`);
+        }
+    })
     
-    // Show attendance section
-    document.getElementById('attendanceSection').style.display = 'block';
-    document.getElementById('lectureInfo').classList.add('active');
-    document.getElementById('statsSummary').classList.add('active');
-    document.getElementById('bulkActions').classList.add('active');
-    document.getElementById('attendanceGrid').classList.add('active');
-    document.getElementById('saveSection').classList.add('active');
 
-    // Render attendance grid
-    renderAttendanceGrid(filteredStudents);
-    updateStats(filteredStudents);
-
-    // Scroll to attendance section
-    document.getElementById('attendanceSection').scrollIntoView({ behavior: 'smooth' });
+    
 }
 
 // Display lecture information
-function displayLectureInfo() {
-    document.getElementById('displaySemester').textContent = `Semester ${currentLecture.semester}`;
-    document.getElementById('displaySection').textContent = `Section ${currentLecture.section}`;
-    document.getElementById('displaySubject').textContent = currentLecture.subject;
-    document.getElementById('displayDate').textContent = new Date(currentLecture.date).toLocaleDateString('en-US', { 
+function displayLectureInfo(semester, section, subject, date, startTime, endTime) {
+    document.getElementById('displaySemester').textContent = `Semester ${semester}`;
+    document.getElementById('displaySection').textContent = `Section ${section}`;
+    document.getElementById('displaySubject').textContent = subject;
+    document.getElementById('displayDate').textContent = new Date(date).toLocaleDateString('en-US', { 
         year: 'numeric', 
         month: 'long', 
         day: 'numeric' 
     });
-    document.getElementById('displayTime').textContent = `${formatTime(currentLecture.startTime)} - ${formatTime(currentLecture.endTime)}`;
+    document.getElementById('displayTime').textContent = `${formatTime(startTime)} - ${formatTime(endTime)}`;
 }
 
 // Format time to 12-hour format
@@ -101,20 +100,19 @@ function formatTime(time) {
 }
 
 // Render attendance grid
-function renderAttendanceGrid(filteredStudents) {
+function renderAttendanceGrid(studentsData) {
     const grid = document.getElementById('attendanceGrid');
-    
-    grid.innerHTML = filteredStudents.map(student => {
-        const status = currentAttendance[student.id] || 'absent';
+
+    let total_students = studentsData.map(student => student.id);
+
+    grid.innerHTML = studentsData.map(student => {
         const initials = student.name.split(' ').map(n => n[0]).join('');
         
         return `
-            <div class="student-card ${status}" onclick="toggleAttendance(${student.id})">
+            <div class="student-card" data-id="${student.id}" onclick="toggleAttendance(${student.id})">
                 <div class="student-header">
                     <div class="student-avatar">${initials}</div>
-                    <div class="status-indicator ${status}">
-                        ${status === 'present' ? '✓' : '✗'}
-                    </div>
+                    <div class="status-indicator" data-id="${student.id}"></div>
                 </div>
                 <div class="student-name">${student.name}</div>
                 <div class="student-details">
@@ -123,57 +121,88 @@ function renderAttendanceGrid(filteredStudents) {
             </div>
         `;
     }).join('');
+    localStorage.setItem("total_students", JSON.stringify(total_students));
 }
 
 // Toggle attendance
 function toggleAttendance(studentId) {
-    currentAttendance[studentId] = currentAttendance[studentId] === 'present' ? 'absent' : 'present';
-    
-    const filteredStudents = students.filter(s => {
-        return s.class.includes(`Semester ${currentLecture.semester}`) && 
-               s.class.includes(`Section ${currentLecture.section}`);
-    });
-    
-    renderAttendanceGrid(filteredStudents);
-    updateStats(filteredStudents);
+    const card = document.querySelector(`.student-card[data-id="${studentId}"]`);
+    const sign = document.querySelector(`.status-indicator[data-id="${studentId}"]`);
+    let presentStudents = JSON.parse(localStorage.getItem("present_students")) || [];
+    if (presentStudents.includes(studentId)) {
+        presentStudents = presentStudents.filter(id => id !== studentId);
+        card.classList.remove("present"); 
+        sign.classList.remove("present");
+        sign.classList.add("absent");
+        card.classList.add("absent");
+        sign.textContent = '✗'; 
+    } else {
+        presentStudents.push(studentId);
+        card.classList.remove("absent"); 
+        sign.classList.remove("absent");
+        card.classList.add("present"); 
+        sign.classList.add("present");
+        sign.textContent = '✓';
+    }
+    let total_student = Number(document.getElementById('totalStudents').innerHTML);
+    let updated_att = (presentStudents.length / total_student) * 100; 
+    document.getElementById('attendanceRate').textContent = updated_att + '%';
+    document.getElementById('presentCount').textContent = presentStudents.length;
+    document.getElementById('absentCount').textContent = total_student - presentStudents.length;
+    localStorage.setItem("present_students", JSON.stringify(presentStudents));
+
 }
 
 // Mark all present
 function markAllPresent() {
-    Object.keys(currentAttendance).forEach(id => {
-        currentAttendance[id] = 'present';
+    let totalStudents = JSON.parse(localStorage.getItem("total_students"));
+    localStorage.setItem("present_students", JSON.stringify(totalStudents));
+    totalStudents.forEach(studentId => {
+        let card = document.querySelector(`.student-card[data-id="${studentId}"]`);
+        let sign = document.querySelector(`.status-indicator[data-id="${studentId}"]`);
+        if (card && sign) {
+            sign.textContent = "✓"; 
+            sign.classList.remove("absent");
+            card.classList.remove("absent"); 
+            sign.classList.add("present");
+            card.classList.add("present"); 
+        }
     });
-    
-    const filteredStudents = students.filter(s => {
-        return s.class.includes(`Semester ${currentLecture.semester}`) && 
-               s.class.includes(`Section ${currentLecture.section}`);
-    });
-    
-    renderAttendanceGrid(filteredStudents);
-    updateStats(filteredStudents);
+    let total_student = totalStudents.length
+    let updated_att = (total_student / total_student) * 100; 
+    document.getElementById('attendanceRate').textContent = updated_att + '%';
+    document.getElementById('presentCount').textContent = total_student;
+    document.getElementById('absentCount').textContent = 0;
+
 }
 
 // Mark all absent
 function markAllAbsent() {
-    Object.keys(currentAttendance).forEach(id => {
-        currentAttendance[id] = 'absent';
+    let totalStudents = JSON.parse(localStorage.getItem("total_students"));
+    localStorage.setItem("present_students", JSON.stringify([]));
+    totalStudents.forEach(studentId => {
+        let card = document.querySelector(`.student-card[data-id="${studentId}"]`);
+        let sign = document.querySelector(`.status-indicator[data-id="${studentId}"]`);
+        if (card && sign) {
+            sign.textContent = "✗"; 
+            sign.classList.remove("present");
+            card.classList.remove("present");
+            sign.classList.add("absent");
+            card.classList.add("absent"); 
+        }
     });
-    
-    const filteredStudents = students.filter(s => {
-        return s.class.includes(`Semester ${currentLecture.semester}`) && 
-               s.class.includes(`Section ${currentLecture.section}`);
-    });
-    
-    renderAttendanceGrid(filteredStudents);
-    updateStats(filteredStudents);
+    let total_student = totalStudents.length
+    document.getElementById('attendanceRate').textContent = 0 + '%';
+    document.getElementById('presentCount').textContent = 0;
+    document.getElementById('absentCount').textContent = total_student;
 }
 
 // Update statistics
-function updateStats(filteredStudents) {
-    const totalStudents = filteredStudents.length;
-    const presentCount = Object.values(currentAttendance).filter(status => status === 'present').length;
-    const absentCount = totalStudents - presentCount;
-    const rate = totalStudents > 0 ? ((presentCount / totalStudents) * 100).toFixed(1) : 0;
+function updateStats(studentsData) {
+    const totalStudents = studentsData.length;
+    const presentCount = "0";
+    const absentCount = "0"
+    const rate = 0;
     
     document.getElementById('totalStudents').textContent = totalStudents;
     document.getElementById('presentCount').textContent = presentCount;
@@ -183,35 +212,40 @@ function updateStats(filteredStudents) {
 
 // Save attendance
 function saveAttendance() {
-    if (!currentLecture) {
-        alert('No lecture in progress!');
-        return;
+    let presentStudents = JSON.parse(localStorage.getItem("present_students")) || [];
+    let totalStudents = JSON.parse(localStorage.getItem("total_students")) || [];
+    let absentStudents = totalStudents.filter(student => !presentStudents.includes(student));
+    let subject = document.getElementById('subject').value;
+    let date = document.getElementById('lectureDate').value;
+
+    if (confirm("Are you sure you want to save the attendance?")) {
+        fetch('/save-attendance', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                presentStudents,
+                absentStudents,
+                subject,
+                date
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (!data.success) {
+                alert(data.message);
+            }
+            localStorage.setItem("present_students", JSON.stringify([]));
+            localStorage.setItem("total_students", JSON.stringify([]));
+            resetLecture();
+        })
+        .catch(error => {
+            alert("Something went wrong while saving attendance.");
+        });
     }
-
-    // Create lecture record
-    const lectureRecord = {
-        ...currentLecture,
-        attendance: { ...currentAttendance },
-        savedAt: new Date().toISOString()
-    };
-
-    // Add to lecture attendance array
-    lectureAttendance.push(lectureRecord);
-    
-    // Save to localStorage
-    localStorage.setItem('lectureAttendance', JSON.stringify(lectureAttendance));
-    
-    alert(`✅ Attendance saved successfully!\n\nLecture: ${currentLecture.subject}\nSemester: ${currentLecture.semester}\nSection: ${currentLecture.section}\nDate: ${currentLecture.date}\nTime: ${formatTime(currentLecture.startTime)} - ${formatTime(currentLecture.endTime)}`);
-    
-    // Reset
-    resetLecture();
 }
 
 // Reset lecture
 function resetLecture() {
-    currentLecture = null;
-    currentAttendance = {};
-    
     // Hide sections
     document.getElementById('attendanceSection').style.display = 'none';
     document.getElementById('lectureInfo').classList.remove('active');
@@ -228,27 +262,21 @@ function resetLecture() {
 }
 
 // Logout
-function logout() {
-    if (currentLecture) {
-        if (!confirm('You have unsaved attendance! Are you sure you want to logout?')) {
-            return;
-        }
-    }
-    
+function logout() {    
     if (confirm('Are you sure you want to logout?')) {
-        localStorage.removeItem('userRole');
-        localStorage.removeItem('username');
-        window.location.href = 'login.html';
+        window.location.href = '/logout';
     }
 }
 
 // Initialize on page load
 window.addEventListener('DOMContentLoaded', () => {
-    // Check if user is logged in
-    const userRole = localStorage.getItem('userRole');
-    if (userRole !== 'teacher') {
-        window.location.href = 'login.html';
-    }
+    fetch('/rewrite-values')
+    .then(response => response.json())
+    .then(data => {
+        if (data.success){
+            document.getElementById('subject').value = data.subject;
+        }
+    })
     
     setTodayDate();
     

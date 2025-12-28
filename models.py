@@ -41,3 +41,4 @@ class Attendance(db.Model):
     )
     date = db.Column(db.Date, nullable=False)
     status = db.Column(db.String(10))
+    subject = db.Column(db.String(100), nullable=False)
