@@ -28,12 +28,15 @@
             font-family: 'Poppins', sans-serif;
             background: var(--light);
             color: var(--text);
+            overflow-x: hidden;
         }
 
         .container {
             max-width: 1400px;
             margin: 0 auto;
             padding: 20px;
+            width: 100%;
+            overflow-x: hidden;
         }
 
         .header {
@@ -204,6 +207,8 @@
             padding: 28px;
             box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
             margin-bottom: 24px;
+            width: 100%;
+            overflow-x: hidden;
         }
 
         .section-title {
@@ -218,6 +223,8 @@
             display: grid;
             grid-template-columns: repeat(7, 1fr);
             gap: 8px;
+            width: 100%;
+            max-width: 100%;
         }
 
         .calendar-day {
@@ -230,6 +237,9 @@
             border: 2px solid var(--border);
             transition: all 0.3s;
             cursor: pointer;
+            padding: 4px;
+            min-width: 0;
+            overflow: hidden;
         }
 
         .calendar-day:hover {
@@ -256,11 +266,13 @@
             font-size: 18px;
             font-weight: 600;
             color: var(--dark);
+            line-height: 1;
         }
 
         .day-status {
             font-size: 20px;
             margin-top: 4px;
+            line-height: 1;
         }
 
         .month-selector {
@@ -408,15 +420,19 @@
             }
 
             .section {
-                padding: 20px 16px;
+                padding: 16px 12px;
+                width: 100%;
+                max-width: 100%;
+                overflow-x: hidden;
             }
 
             .section-title {
-                font-size: 20px;
+                font-size: 18px;
             }
 
             .month-selector {
                 gap: 12px;
+                flex-wrap: wrap;
             }
 
             .month-name {
@@ -426,18 +442,28 @@
 
             .calendar-grid {
                 gap: 4px;
+                width: 100%;
+                max-width: 100%;
             }
 
             .calendar-day {
-                font-size: 12px;
+                font-size: 11px;
+                border-radius: 8px;
+                padding: 2px;
+                border-width: 1.5px;
+            }
+
+            .calendar-day:hover {
+                transform: none;
             }
 
             .day-number {
-                font-size: 14px;
+                font-size: 13px;
             }
 
             .day-status {
-                font-size: 16px;
+                font-size: 14px;
+                margin-top: 2px;
             }
 
             .attendance-table {
@@ -469,14 +495,23 @@
 
             .calendar-grid {
                 gap: 2px;
+                width: 100%;
+                max-width: 100%;
+            }
+
+            .calendar-day {
+                border-radius: 6px;
+                padding: 1px;
+                border-width: 1px;
             }
 
             .day-number {
-                font-size: 12px;
+                font-size: 11px;
             }
 
             .day-status {
-                font-size: 14px;
+                font-size: 12px;
+                margin-top: 1px;
             }
         }
     </style>
@@ -490,18 +525,18 @@
                     AttendEase
                 </div>
                 <div class="user-info">
-                    <div class="user-name" id="studentName">Student</div>
-                    <div class="user-role">View Attendance</div>
+                    <div class="user-name" id="studentName"></div>
+                    <div class="user-role">Student</div>
                 </div>
             </div>
             <button class="logout-btn" onclick="logout()">🚪 Logout</button>
         </div>
 
         <div class="profile-section">
-            <div class="profile-avatar" id="profileAvatar">ST</div>
+            <div class="profile-avatar" id="profileAvatar"></div>
             <div class="profile-details">
-                <h2 id="profileName">Student Name</h2>
-                <p id="profileDetails">Roll No: R001 | Class 10A</p>
+                <h2 id="profileName"></h2>
+                <p id="profileDetails"></p>
             </div>
         </div>
 
@@ -565,7 +600,7 @@
                 <thead>
                     <tr>
                         <th>Date & Subject</th>
-                        <th>Day & Time</th>
+                        <th>Day</th>
                         <th>Status</th>
                     </tr>
                 </thead>

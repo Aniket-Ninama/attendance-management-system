@@ -1,11 +1,3 @@
-// Get data from localStorage
-localStorage.setItem("present_students", JSON.stringify([]));
-let students = JSON.parse(localStorage.getItem('students')) || [];
-let lectureAttendance = JSON.parse(localStorage.getItem('lectureAttendance')) || [];
-
-let currentLecture = null;
-let currentAttendance = {};
-
 // Set today's date
 function setTodayDate() {
     const today = new Date().toISOString().split('T')[0];
@@ -270,11 +262,12 @@ function logout() {
 
 // Initialize on page load
 window.addEventListener('DOMContentLoaded', () => {
-    fetch('/rewrite-values')
+    fetch('/rewrite-teacher-values')
     .then(response => response.json())
     .then(data => {
         if (data.success){
             document.getElementById('subject').value = data.subject;
+            document.querySelector('.user-name').textContent = data.teacher_name;
         }
     })
     

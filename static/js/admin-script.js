@@ -557,6 +557,13 @@ function logout() {
 // Initialize on page load
 window.addEventListener('DOMContentLoaded', () => {
     updateDashboard();
+    fetch("/rewrite-admin-values")
+    .then(response => response.json())
+    .then(data => {
+        const initials = data.admin_name.split(' ').map(n => n[0]).join('');
+        document.querySelector('.user-avatar').textContent = initials;
+        document.querySelector('.user-name').textContent = data.admin_name;
+    })
 });
 
 // Close sidebar when clicking outside on mobile
@@ -564,7 +571,6 @@ document.addEventListener('click', function(event) {
     const sidebar = document.querySelector('.sidebar');
     const menuBtn = document.querySelector('.mobile-menu-btn-header');
     const floatingBtn = document.querySelector('.mobile-menu-btn-floating');
-    
     // Check if click is outside sidebar and not on menu buttons
     if (window.innerWidth <= 768 && sidebar.classList.contains('active')) {
         if (!sidebar.contains(event.target) && 

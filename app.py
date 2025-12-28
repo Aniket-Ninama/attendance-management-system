@@ -28,6 +28,73 @@ def logout():
     session.clear()  
     return redirect(url_for('start'))
 
+@app.route('/recent-attendance')
+def recent_attendance():
+    user_id = session.get("user_id")
+    user_role = session.get("userRole")
+
+    user = User.query.filter_by(id=user_id, role=user_role).first()
+    student = Student.query.filter_by(email=user.email).first()
+
+    records = (
+        Attendance.query
+        .filter_by(student_id=student.id)
+        .order_by(Attendance.date.desc())
+        .limit(10)
+        .all()
+    )
+
+    result = []
+    for r in records:
+        result.append({
+            "date": r.date.strftime("%Y-%m-%d"),
+            "subject": r.subject,
+            "status": r.status
+        })
+
+    return jsonify({"success": True, "recent_attendance": result})
+
+
+@app.route('/attendance-calendar', methods=["POST"])
+def attendance_calendar():
+    month = request.json['month']
+    year = int(request.json['year'])
+    user_id = session.get("user_id")
+    user_role = session.get('userRole')
+    user_details = User.query.filter_by(id=user_id, role=user_role).first()
+    student_details = Student.query.filter_by(email=user_details.email).first()
+    total_attendance_count = Attendance.query.filter(Attendance.student_id == student_details.id).count()
+    present_count = Attendance.query.filter(Attendance.student_id == student_details.id, Attendance.status == "present").count()
+    absent_count = Attendance.query.filter(Attendance.student_id == student_details.id, Attendance.status == "absent").count()
+    month_record = Attendance.query.filter(Attendance.student_id == student_details.id, extract("month", Attendance.date) == month, extract("year", Attendance.date) == year).all()
+    if not month_record:
+        return jsonify({"success":False, "records": [], "present_count": 0, "absent_count": 0, "total_count": 0}), 201
+
+    records = []
+    for attendance in month_record:
+        records.append({
+            "date": attendance.date.strftime("%Y-%m-%d"),
+            "status": attendance.status,
+            "subject": attendance.subject
+        })
+    return jsonify({"success":True, "records": records, "present_count": present_count, "absent_count": absent_count, "total_count": total_attendance_count}), 201
+
+@app.route("/rewrite-student-values")
+def rewrite_student_values():
+    user_role = session.get('userRole')
+    user_id = session.get("user_id")
+    user_details = User.query.filter_by(id=user_id, role=user_role).first()
+    student_details = Student.query.filter_by(email=user_details.email).first()
+    student_id = student_details.id
+    total_attendance_count = Attendance.query.filter(Attendance.student_id == student_id).count()
+    present_count = Attendance.query.filter(Attendance.student_id == student_id, Attendance.status == "present").count()
+    absent_count = Attendance.query.filter(Attendance.student_id == student_id, Attendance.status == "absent").count()
+    attendance_percentage = (present_count / total_attendance_count) * 100 if total_attendance_count > 0 else 0
+    if not student_details:
+        return jsonify({"success": False, "message": "Student cannot found!"})
+    return jsonify({"total_count": total_attendance_count, "present_count": present_count, "absent_count": absent_count, "attendance_per": attendance_percentage , "student_name": student_details.name.capitalize(), "rollNo": student_details.roll_no, "semester": student_details.semester, "section": student_details.section.upper(), "course": student_details.course_name.upper(), "success": True})
+
+# Teacher-dashboard
 @app.route('/save-attendance', methods=["POST"])
 def save_attendance():
     present_student_id = request.json['presentStudents']
@@ -85,16 +152,17 @@ def start_attendance():
         })
     return jsonify({"success": True, "students_data": records})
 
-@app.route('/rewrite-values')
-def rewrite_values():
+@app.route('/rewrite-teacher-values')
+def rewrite_teacher_values():
     user_role = session.get('userRole')
     user_id = session.get("user_id")
     user_details = User.query.filter_by(id=user_id, role=user_role).first()
     teacher_details = Teacher.query.filter_by(email=user_details.email).first()
     if not teacher_details:
         return jsonify({"success": False, "message": "Cannot found!"})
-    return jsonify({"subject": teacher_details.subject, "success": True})
+    return jsonify({"subject": teacher_details.subject, "teacher_name": teacher_details.name.capitalize(), "success": True})
 
+# Admin-dashboard
 @app.route("/monthly-report", methods=["POST"])
 def monthly_report():
     data = request.json
@@ -315,7 +383,6 @@ def delete_student_data():
     db.session.commit()
     return jsonify({"message": "Student data deleted successfully!"}), 201
 
-
 @app.route("/save-student-data", methods=["POST"])
 def save_student_data():
     data = request.json
@@ -330,7 +397,6 @@ def save_student_data():
     update_student.section = data['section']
     db.session.commit()
     return jsonify({"message": "Student data updated successfully"}), 201
-
 
 @app.route("/get-student-data", methods=["POST"])
 def get_student_data():
@@ -382,7 +448,6 @@ def add_student():
         db.session.rollback()
         return jsonify({"message": str(e)}), 500  # General server error
 
-
 @app.route("/render-students")
 def render_students():
     students = Student.query.all()
@@ -426,6 +491,15 @@ def admin_dashboard():
     if session.get('userRole') != 'admin':
         return redirect(url_for('login'))
     return render_template("admin-dashboard.html")
+
+@app.route('/rewrite-admin-values')
+def rewrite_admin_values():
+    user_role = session.get('userRole')
+    user_id = session.get("user_id")
+    user_details = User.query.filter_by(id=user_id, role=user_role).first()
+    if not user_details:
+        return jsonify({"success": False, "message": "Cannot found!"})
+    return jsonify({"admin_name": user_details.username.capitalize(), "success": True})
 
 @app.route("/login", methods=['POST','GET'])
 def login():
