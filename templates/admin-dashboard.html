@@ -1158,12 +1158,16 @@
                         <div class="section-header">
                             <h2 class="section-title">Manage Attendance</h2>
                             <div class="attendance-controls">
-                                <label for="courseName">Course Name:</label>
+                                <label for="courseName">Course:</label>
                                 <select id="courseName" name="courseName" onchange="loadAttendance()">
                                     <option value="BCA" selected>BCA</option>
                                     <option value="BCOM">BCOM</option>
                                     <option value="CS">CS</option>
                                     <option value="ECO">ECO</option>
+                                </select>
+                                <label for="subjectName">Subject:</label>
+                                <select id="subjectName" name="subjectName" onchange="loadAttendance()">
+            
                                 </select>
                                 <label for="semester">Semester:</label>
                                 <select id="semester" name="semester" onchange="loadAttendance()">
@@ -1183,7 +1187,8 @@
                                     <option value="B">B</option>
                                     <option value="C">C</option>
                                 </select>
-
+                                
+                                <label for="date">Date:</label>
                                 <input type="date" id="attendanceDate" onchange="loadAttendance()">
 
                                 <div class="search-box">
@@ -1196,7 +1201,8 @@
                             <table>
                                 <thead>
                                     <tr>
-                                        <th>Student Name</th>
+                                        <th>Name</th>
+                                        <th>Subject</th>
                                         <th>Roll No</th>
                                         <th>Semester</th>
                                         <th>Section</th>
@@ -1319,7 +1325,7 @@
                 </div>
                 <div class="form-group">
                     <label>Email</label>
-                    <input type="email" id="editStudentEmail" required>
+                    <input type="email" id="editStudentEmail" readonly>
                 </div>
                 <div class="form-group">
                     <label>Course Name</label>
@@ -1361,7 +1367,7 @@
                 </div>
                 <div class="form-group">
                     <label>Email</label>
-                    <input type="email" id="editTeacherEmail" required>
+                    <input type="email" id="editTeacherEmail" readonly>
                 </div>
                 <div class="form-group">
                     <label>Subject</label>

@@ -6,7 +6,9 @@ from config import Config
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy import extract, func, case
 from models import db ,User, Teacher, Student, Attendance
-import os
+from flask_mail import Mail, Message
+import os, random, string
+
 
 load_dotenv()
 
@@ -14,7 +16,18 @@ app = Flask(__name__)
 
 app.config.from_object(Config)
 db.init_app(app=app)
+my_email = os.getenv("MY_EMAIL")
+my_password = os.getenv("EMAIL_PASSWORD")
+app.config.update(
+    MAIL_SERVER="smtp.gmail.com",
+    MAIL_PORT=587,
+    MAIL_USE_TLS=True,
+    MAIL_USERNAME=my_email,
+    MAIL_DEFAULT_SENDER=my_email,
+    MAIL_PASSWORD=my_password  # Use App Password for Gmail
+)
 
+mail = Mail(app)
 app.secret_key = os.getenv("SECRET_KEY")
 bcrypt = Bcrypt(app=app)
 
@@ -28,6 +41,7 @@ def logout():
     session.clear()  
     return redirect(url_for('start'))
 
+# Student-dashboard
 @app.route('/recent-attendance')
 def recent_attendance():
     user_id = session.get("user_id")
@@ -53,7 +67,6 @@ def recent_attendance():
         })
 
     return jsonify({"success": True, "recent_attendance": result})
-
 
 @app.route('/attendance-calendar', methods=["POST"])
 def attendance_calendar():
@@ -90,6 +103,7 @@ def rewrite_student_values():
     present_count = Attendance.query.filter(Attendance.student_id == student_id, Attendance.status == "present").count()
     absent_count = Attendance.query.filter(Attendance.student_id == student_id, Attendance.status == "absent").count()
     attendance_percentage = (present_count / total_attendance_count) * 100 if total_attendance_count > 0 else 0
+    attendance_percentage = round(attendance_percentage , 2)
     if not student_details:
         return jsonify({"success": False, "message": "Student cannot found!"})
     return jsonify({"total_count": total_attendance_count, "present_count": present_count, "absent_count": absent_count, "attendance_per": attendance_percentage , "student_name": student_details.name.capitalize(), "rollNo": student_details.roll_no, "semester": student_details.semester, "section": student_details.section.upper(), "course": student_details.course_name.upper(), "success": True})
@@ -97,41 +111,58 @@ def rewrite_student_values():
 # Teacher-dashboard
 @app.route('/save-attendance', methods=["POST"])
 def save_attendance():
-    present_student_id = request.json['presentStudents']
-    absent_student_id = request.json['absentStudents']
-    date = request.json['date']
-    subject = request.json['subject']
-    py_date = datetime.strptime(date, "%Y-%m-%d").date()
+    data = request.json
 
-    # Add present students
-    if present_student_id:
-        for id in present_student_id:
-            new_attendance = Attendance(
-                student_id=id,
-                date=py_date,
-                status="present",
-                subject=subject
-            )
-            db.session.add(new_attendance)
+    present_ids = set(data.get('presentStudents', []))
+    absent_ids = set(data.get('absentStudents', []))
+    # Remove duplicates
+    absent_ids -= present_ids
 
-    # Add absent students
-    if absent_student_id:
-        for id in absent_student_id:
-            new_attendance = Attendance(
-                student_id=id,
-                date=py_date,
-                status="absent",
-                subject=subject
-            )
-            db.session.add(new_attendance)
+    all_ids = present_ids.union(absent_ids)
+    subject = data['subject']
+    py_date = datetime.strptime(data['date'], "%Y-%m-%d").date()
 
-    try:
-        db.session.commit()
-    except IntegrityError:
-        db.session.rollback()
-        return jsonify({"success": False, "message": "Student attendance is already stored!"}), 503
+    existing_records = Attendance.query.filter_by(date=py_date, subject=subject).all()
+    existing_ids = {record.student_id for record in existing_records}
 
-    return jsonify({"success": True}), 201
+    # Check if that day is sunday:
+    if py_date.weekday() == 6:
+        return jsonify({
+            "success": False,
+            "message": "Attendance cannot be taken on Sunday (Holiday)"
+        }), 400
+
+    # Check if any of the new IDs already exist
+    duplicates = all_ids.intersection(existing_ids)
+    if duplicates:
+        return jsonify({
+            "success": False,
+            "message": "Attendance already taken for this date & subject!"
+        }), 409
+
+
+    for sid in present_ids:
+        db.session.add(Attendance(
+            student_id=sid,
+            date=py_date,
+            status="present",
+            subject=subject
+        ))
+
+    for sid in absent_ids:
+        db.session.add(Attendance(
+            student_id=sid,
+            date=py_date,
+            status="absent",
+            subject=subject
+        ))
+
+    db.session.commit()
+
+    return jsonify({
+        "success": True,
+        "message": "Attendance saved successfully"
+    }), 201
 
 @app.route('/start-attendance', methods=["POST"])
 def start_attendance():
@@ -198,10 +229,11 @@ def monthly_report():
         "total_classes": student.total_classes,
         "attendance_rate": (student.present_count / student.total_classes) * 100
         })
-    overall_attendance = (all_students_present / all_students_total_classes) * 100
     if len(all_students) < 1: 
-        return jsonify({"message": "Student cannot be found!"}), 503
-    return jsonify({"data": all_students, "overall_attendance": overall_attendance, "message": "Daily report retrive successfully."}), 201
+        return jsonify({"message": "Student attendance cannot be found in this month!", "success": False}), 404
+    overall_attendance = (all_students_present / all_students_total_classes) * 100
+    overall_attendance = round(overall_attendance , 2)
+    return jsonify({"data": all_students, "overall_attendance": overall_attendance, "message": "Monthly report retrive successfully.", "success": True}), 201
 
 @app.route("/daily-report", methods=["POST"])
 def daily_report():
@@ -224,13 +256,13 @@ def daily_report():
             "section": student.section,
             "status": attendance.status
         })
+    if len(all_students) < 1:
+        return jsonify({"message": "Students attendance cannot be found at this date!", "success": False}), 404
     present_stud = Attendance.query.filter_by(date=py_date, status="present").count()
     absent_stud = Attendance.query.filter_by(date=py_date, status="absent").count()
     todays_att =  (present_stud / len(all_students)) * 100 if len(all_students) > 0 else 0
-
-    if len(all_students) < 1:
-        return jsonify({"message": "Students not found!"}), 503
-    return jsonify({"data": all_students, "attendancePercent": todays_att, "presentStudents": present_stud, "absentStudents": absent_stud, "message": "Daily report retrive successfully."}), 201
+    todays_att = round(todays_att, 2)
+    return jsonify({"success": True,"data": all_students, "attendancePercent": todays_att, "presentStudents": present_stud, "absentStudents": absent_stud, "message": "Daily report retrive successfully."}), 201
 
 @app.route("/toggle-attendance", methods=["POST"])
 def toggle_attendance():
@@ -251,25 +283,23 @@ def view_attendance():
     data = request.json
     course = data['course']
     section = data['section']
-    semester = data['semester']
+    semester = int(data['semester'])
     date = data['date']
+    subject = data['subject']
     py_date = datetime.strptime(date, "%Y-%m-%d").date()
-
     # Query attendance with filters
     records = (
         db.session.query(Attendance, Student)
         .join(Student, Attendance.student_id == Student.id)
-        .filter(Student.course_name == course)
+        .filter(Student.course_name.ilike(course.strip()))
         .filter(Student.semester == semester)
         .filter(Student.section == section)
         .filter(Attendance.date == py_date)
+        .filter(Attendance.subject.ilike(subject.strip()))
     )
-
     if data.get('searchTerm'):
         records = records.filter(Student.name.ilike(f"{data['searchTerm']}%"))
-
     querys = records.all()
-
     # Format response
     result = []
     for attendance, student in querys:
@@ -281,19 +311,30 @@ def view_attendance():
             "semester": student.semester,
             "section": student.section,
             "date": attendance.date.strftime("%Y-%m-%d"),
-            "status": attendance.status
+            "status": attendance.status,
+            "subject": attendance.subject
         })
 
     return jsonify(result), 201
+
+@app.route('/get-subjects')
+def get_subjects():
+    subjects = db.session.query(Teacher.subject).distinct().all()
+    if not subjects:
+        return jsonify({"success": False, "message": "Cannot retrieve subjects!"}), 404
+    subject_list = [s[0] for s in subjects]
+    return jsonify({"success": True, "subjects": subject_list})
 
 @app.route("/delete-teacher-data", methods=["POST"])
 def delete_teacher_data():
     data = request.json
     teacher_id = data['id']
     teacher = db.session.get(Teacher, teacher_id)
-    if not teacher:
+    user_teacher = db.session.query(User).filter_by(email=teacher.email).first()
+    if not teacher and not user_teacher:
         return jsonify({"message": "Teacher not found!"}), 404
     db.session.delete(teacher)
+    db.session.delete(user_teacher)
     db.session.commit()
     return jsonify({"message": "Teacher data deleted successfully!"}), 201
 
@@ -328,7 +369,7 @@ def get_teacher_data():
 @app.route("/add-teacher", methods=["POST"])
 def add_teacher():
     data = request.json
-    if not "newTeacher" in data or not data:
+    if not data or not "newTeacher" in data:
         return jsonify({"message": "Invalid request body!"}), 400
     
     teacher_data = data["newTeacher"]
@@ -337,17 +378,54 @@ def add_teacher():
         if field not in teacher_data or not teacher_data[field]:
             return jsonify({"message": f"{field} is required"}), 400
         
+    # Generate password
+    userName = teacher_data['email'].split("@")[0]
+    random_digits = ''.join(random.choices(string.digits, k=3))
+    user_password = userName + random_digits
+        
     new_teacher = Teacher(
         name=teacher_data['name'],
         email=teacher_data['email'],
         subject=teacher_data['subject'],
         phone=teacher_data['phone'],
     )
+    new_user = User(
+        username=new_teacher.name,
+        email=new_teacher.email,
+        password_hash=bcrypt.generate_password_hash(user_password).decode('utf-8'),
+        role="teacher"
+    )
 
     try:
         db.session.add(new_teacher)
+        db.session.add(new_user)
         db.session.commit()
-        return jsonify({"message": "Teacher added successfully!"}), 201
+
+        msg = Message(
+            subject="Welcome to the Course!",
+            sender=app.config["MAIL_USERNAME"],
+            recipients=[new_teacher.email]
+        )
+        msg.body = f"""
+        Hi {new_teacher.name},
+
+        Welcome to Attendease 🎉
+
+        You have been successfully added to the system as a faculty member.
+        Subject: {new_teacher.subject}
+
+        Your login credentials:
+        Email: {new_teacher.email}
+        Password: {user_password}
+
+        Best regards,
+        Attendease Team
+        """
+
+        mail.send(msg)
+
+
+        return jsonify({"message": "Teacher added successfully and email sent!"}), 201
 
     except IntegrityError as e:
         db.session.rollback()
@@ -377,9 +455,11 @@ def delete_student_data():
     data = request.json
     student_id = data['id']
     student = db.session.get(Student, student_id)
-    if not student:
+    user_student = db.session.query(User).filter_by(email=student.email).first()
+    if not student or not user_student:
         return jsonify({"message": "Student not found!"}), 404
     db.session.delete(student)
+    db.session.delete(user_student)
     db.session.commit()
     return jsonify({"message": "Student data deleted successfully!"}), 201
 
@@ -417,15 +497,20 @@ def get_student_data():
 @app.route("/add-student", methods=["POST"])
 def add_student():
     data = request.json
-    if not "newStudent" in data or not data:
+    if not data or "newStudent" not in data:
         return jsonify({"message": "Invalid request body!"}), 400
     
     student_data = data["newStudent"]
     required_fields = ['name', 'email', 'course_name', 'semester', 'section', 'roll']
     for field in required_fields:
-        if field not in student_data or not student_data[field]:
+        if not student_data.get(field):
             return jsonify({"message": f"{field} is required"}), 400
-        
+    
+    # Generate password
+    userName = student_data['email'].split("@")[0]
+    random_digits = ''.join(random.choices(string.digits, k=3))
+    user_password = userName + random_digits
+    
     new_student = Student(
         name=student_data['name'],
         email=student_data['email'],
@@ -434,19 +519,52 @@ def add_student():
         semester=student_data['semester'],
         section=student_data['section']
     )
-
+    
+    new_user = User(
+        username=new_student.name,
+        email=new_student.email,
+        password_hash=bcrypt.generate_password_hash(user_password).decode('utf-8'),
+        role="student"
+    )
+    
     try:
         db.session.add(new_student)
+        db.session.add(new_user)
         db.session.commit()
-        return jsonify({"message": "Student added successfully!"}), 201
 
-    except IntegrityError as e:
+        msg = Message(
+            subject="Welcome to the Course!",
+            sender=app.config["MAIL_USERNAME"],
+            recipients=[new_student.email]
+        )
+        msg.body = f"""
+        Hi {new_student.name},
+
+        Welcome to Attendease 🎉
+
+        You have been successfully registered for {new_student.course_name}.
+        Roll No: {new_student.roll_no}
+        Semester: {new_student.semester}, Section: {new_student.section}
+
+        Your login credentials:
+        Email: {new_student.email}
+        Password: {user_password}
+
+        Best regards,
+        Attendease Team
+        """
+
+        mail.send(msg)
+        
+        return jsonify({"message": "Student added successfully and email sent!"}), 201
+    
+    except IntegrityError:
         db.session.rollback()
-        return jsonify({"message": "Student already added!"}), 400  # Bad Request
-
+        return jsonify({"message": "Student already exists!"}), 400
+    
     except Exception as e:
         db.session.rollback()
-        return jsonify({"message": str(e)}), 500  # General server error
+        return jsonify({"message": str(e)}), 500
 
 @app.route("/render-students")
 def render_students():
@@ -472,6 +590,7 @@ def render_dashboard():
     present_stud = Attendance.query.filter_by(date=today, status="present").count()
     absent_stud = Attendance.query.filter_by(date=today, status="absent").count()
     todays_att =  (present_stud / total_students) * 100 if total_students > 0 else 0
+    todays_att = round(todays_att, 2)
     return jsonify({"Total_students": total_students, "Total_teachers": total_teachers, "Todays_att": todays_att, "Absent_stud": absent_stud})
 
 @app.route("/student-dashboard")

@@ -218,7 +218,10 @@ function saveAttendance() {
                 presentStudents,
                 absentStudents,
                 subject,
-                date
+                date,
+                course,
+                semester,
+                section
             })
         })
         .then(response => response.json())
@@ -243,11 +246,9 @@ function resetLecture() {
     document.getElementById('lectureInfo').classList.remove('active');
     
     // Clear form
+    document.getElementById('course').value = '';
     document.getElementById('semester').value = '';
     document.getElementById('section').value = '';
-    document.getElementById('subject').value = '';
-    document.getElementById('startTime').value = '';
-    document.getElementById('endTime').value = '';
     
     // Scroll to top
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -273,7 +274,6 @@ window.addEventListener('DOMContentLoaded', () => {
     
     setTodayDate();
     
-    // Set default times (common class timings)
     const now = new Date();
     const currentHour = now.getHours();
     
@@ -287,11 +287,5 @@ window.addEventListener('DOMContentLoaded', () => {
     } else if (currentHour >= 12 && currentHour < 14) {
         document.getElementById('startTime').value = '12:00';
         document.getElementById('endTime').value = '14:00';
-    } else if (currentHour >= 14 && currentHour < 16) {
-        document.getElementById('startTime').value = '14:00';
-        document.getElementById('endTime').value = '16:00';
-    } else {
-        document.getElementById('startTime').value = '09:00';
-        document.getElementById('endTime').value = '11:00';
     }
 });

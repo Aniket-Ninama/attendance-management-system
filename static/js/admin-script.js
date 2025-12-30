@@ -42,7 +42,10 @@ function showSection(section, event) {
     } else if (section === 'attendance') {
         headerActions.innerHTML = '';
         setTodayDate();
-        loadAttendance();
+        fetchSubjects(() => {
+            loadAttendance();
+        });
+;
     } else if (section === 'reports') {
         headerActions.innerHTML = '';
         setReportDates();
@@ -134,12 +137,11 @@ function addStudent(event) {
     .then(res => res.json())
     .then(data => {
         alert(data.message)
+        closeModal('addStudentModal');
+        renderStudentsTable();
+        event.target.reset();
     })
-    .catch(() => alert('Server error'));
-
-    closeModal('addStudentModal');
-    renderStudentsTable();
-    event.target.reset();
+    .catch(() => alert("Server error"));
 }
 
 // Add teacher
@@ -162,12 +164,11 @@ function addTeacher(event) {
     .then(res => res.json())
     .then(data => {
         alert(data.message)
+        closeModal('addTeacherModal');
+        renderTeachersTable();
+        event.target.reset();
     })
-    .catch(() => alert('Server error'));
-
-    closeModal('addTeacherModal');
-    renderTeachersTable();
-    event.target.reset();
+    .catch(() => alert("Server error"));
 }
 
 // Edit functions (simplified - you can expand these)
@@ -264,10 +265,11 @@ function saveEditTeacher(event){
     .then(res => res.json())
     .then(data => {
         alert(data.message)
+        closeModal('editTeacherModal');
+        renderTeachersTable();
     })
     .catch(() => alert('Server error'));
-    closeModal('editTeacherModal');
-    renderTeachersTable();
+    
 }
 
 function deleteStudent(id) {
@@ -283,9 +285,9 @@ function deleteStudent(id) {
     .then(res => res.json())
     .then(data => {
         alert(data.message)
+        renderStudentsTable();
     })
-    .catch(() => alert('Server error'));
-    renderStudentsTable();
+    .catch(() => alert("Server error"));
 }
 
 function deleteTeacher(id) {
@@ -301,9 +303,9 @@ function deleteTeacher(id) {
     .then(res => res.json())
     .then(data => {
         alert(data.message)
+        renderTeachersTable();
     })
-    .catch(() => alert('Server error'));
-    renderTeachersTable();
+    .catch(() => alert("Server error"));
 }
 
 // Attendance functions
@@ -317,6 +319,7 @@ function renderAttendanceTable(data, semester, section, course) {
     tbody.innerHTML = data.map(student => `
         <tr>
             <td>${student.student_name}</td>
+            <td>${student.subject}</td>
             <td>${student.roll_no}</td>
             <td>${semester}</td>
             <td>${section}</td>
@@ -361,10 +364,10 @@ function toggleAttendance(studentId, date, status) {
 function searchStudentInAttendance() {
     const searchTerm = document.getElementById('searchStudent').value.toLowerCase();
     const date = document.getElementById('attendanceDate').value;
-    const course = document.getElementById('course').value;
+    const course = document.getElementById('courseName').value;
     const semester = document.getElementById('semester').value;
     const section = document.getElementById('section').value;
-    const tbody = document.getElementById('attendanceTable');
+    const subject = document.getElementById('subjectName').value;
     fetch('/view-attendance',{
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -373,7 +376,8 @@ function searchStudentInAttendance() {
             course,
             semester,
             section,
-            searchTerm
+            searchTerm,
+            subject
         })
     })
     .then(response => response.json())
@@ -382,11 +386,38 @@ function searchStudentInAttendance() {
     })
 }
 
+function fetchSubjects(callback){
+    fetch('/get-subjects')
+    .then(response => response.json())
+    .then(data => {
+        if(!data.success){
+            alert(data.message);
+        }
+        else{
+            const select = document.getElementById("subjectName");
+            data.subjects.forEach((subject, index) => {
+                const option = document.createElement("option");
+                option.value = subject;
+                option.textContent = subject;
+                if(index == 0){
+                    option.selected = true;
+                }
+                select.appendChild(option);
+            });
+            // ✅ call callback AFTER subjects are loaded
+            if (typeof callback === 'function') {
+                callback();
+            }
+        }
+    })
+}
+
 function loadAttendance() {
     const date = document.getElementById('attendanceDate').value;
     const semester = document.getElementById('semester').value;
     const section = document.getElementById('section').value;
     const course = document.getElementById('courseName').value;
+    const subject = document.getElementById('subjectName').value;
     fetch('/view-attendance',{
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -394,7 +425,8 @@ function loadAttendance() {
             date,
             course,
             semester,
-            section
+            section,
+            subject
         })
     })
     .then(response => response.json())
@@ -423,6 +455,10 @@ function generateDailyReport() {
     })
     .then(response => response.json())
     .then(data => {
+        if (!data.success){
+            alert(data.message);
+        }
+        else{
         const reportOutput = document.getElementById('reportOutput');
         reportOutput.style.display = 'block';
         reportOutput.innerHTML = `
@@ -472,7 +508,7 @@ function generateDailyReport() {
                 </div>
             </div>
         `;
-    })
+    }})
     
     
 }
@@ -488,7 +524,11 @@ function generateMonthlyReport() {
         })
     })
     .then(response => response.json())
-    .then(data => {            
+    .then(data => {       
+        if (!data.success){
+            alert(data.message);
+        }
+        else{     
             const reportOutput = document.getElementById('reportOutput');
             reportOutput.style.display = 'block';
             reportOutput.innerHTML = `
@@ -528,7 +568,7 @@ function generateMonthlyReport() {
                     </div>
                 </div>
             `;
-    })
+    }})
     
 }
 
