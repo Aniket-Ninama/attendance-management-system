@@ -3,7 +3,7 @@ from app import db, app
 from flask_bcrypt import Bcrypt
 import os
 from dotenv import load_dotenv
-load_dotenv
+load_dotenv()
 
 with app.app_context():
     bcrypt = Bcrypt(app)
@@ -11,7 +11,7 @@ with app.app_context():
     hashed_password = bcrypt.generate_password_hash(raw_password).decode('utf-8')
 
     new_admin = User(
-        username = "Aniket",
+        username = "Admin",
         email=os.getenv("MY_EMAIL"),
         password_hash=hashed_password,
         role = "admin"

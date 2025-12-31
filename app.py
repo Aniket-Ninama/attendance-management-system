@@ -2,6 +2,7 @@ from flask import Flask, request, jsonify, session, render_template, url_for, re
 from flask_bcrypt import Bcrypt
 from dotenv import load_dotenv
 from datetime import date, datetime
+from add_users import create_admin
 from config import Config
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy import extract, func, case
@@ -665,4 +666,9 @@ def start():
 
 
 if __name__ == "__main__":
-    app.run(port=5000, debug=True)
+    with app.app_context():
+        db.create_all()
+        create_admin()
+    
+    app.run(port=5000)
+
