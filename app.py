@@ -345,7 +345,7 @@ def save_teacher_data():
     update_teacher = db.session.query(Teacher).filter_by(id=data['teacher_id']).first()
     if not update_teacher:
         return jsonify({"message": "Student not found!"}), 404
-    update_teacher.name = data['teacher_name']
+    update_teacher.name = data['teacher_name'].capitalize()
     update_teacher.email = data['email']
     update_teacher.subject = data['subject']
     update_teacher.phone = data['phone']
@@ -379,18 +379,18 @@ def add_teacher():
             return jsonify({"message": f"{field} is required"}), 400
         
     # Generate password
-    userName = teacher_data['email'].split("@")[0]
+    userName = teacher_data['name'].lower()
     random_digits = ''.join(random.choices(string.digits, k=3))
     user_password = userName + random_digits
         
     new_teacher = Teacher(
-        name=teacher_data['name'],
+        name=teacher_data['name'].capitalize(),
         email=teacher_data['email'],
         subject=teacher_data['subject'],
         phone=teacher_data['phone'],
     )
     new_user = User(
-        username=new_teacher.name,
+        username=new_teacher.name.capitalize(),
         email=new_teacher.email,
         password_hash=bcrypt.generate_password_hash(user_password).decode('utf-8'),
         role="teacher"
@@ -415,6 +415,7 @@ def add_teacher():
         Subject: {new_teacher.subject}
 
         Your login credentials:
+        Username: {new_user.username}
         Email: {new_teacher.email}
         Password: {user_password}
 
@@ -469,7 +470,7 @@ def save_student_data():
     update_student = db.session.query(Student).filter_by(id=data['student_id']).first()
     if not update_student:
         return jsonify({"message": "Student not found!"}), 404
-    update_student.name = data['student_name']
+    update_student.name = data['student_name'].capitalize()
     update_student.email = data['email']
     update_student.course_name = data['course_name']
     update_student.semester = data['semester']
@@ -507,12 +508,12 @@ def add_student():
             return jsonify({"message": f"{field} is required"}), 400
     
     # Generate password
-    userName = student_data['email'].split("@")[0]
+    userName = student_data['name'].lower()
     random_digits = ''.join(random.choices(string.digits, k=3))
     user_password = userName + random_digits
     
     new_student = Student(
-        name=student_data['name'],
+        name=student_data['name'].capitalize(),
         email=student_data['email'],
         course_name=student_data['course_name'],
         roll_no=student_data['roll'],
@@ -521,7 +522,7 @@ def add_student():
     )
     
     new_user = User(
-        username=new_student.name,
+        username=new_student.name.capitalize(),
         email=new_student.email,
         password_hash=bcrypt.generate_password_hash(user_password).decode('utf-8'),
         role="student"
@@ -547,6 +548,7 @@ def add_student():
         Semester: {new_student.semester}, Section: {new_student.section}
 
         Your login credentials:
+        Username: {new_user.username}
         Email: {new_student.email}
         Password: {user_password}
 
@@ -623,11 +625,11 @@ def rewrite_admin_values():
 @app.route("/login", methods=['POST','GET'])
 def login():
     data = request.json
-    email = data.get("username")
+    username = data.get("username")
     password = data.get("password")
     role = data.get("role")
     if role == "admin":
-        user = User.query.filter_by(email=email, role=role).first()
+        user = User.query.filter_by(email=username, role=role).first() or User.query.filter_by(username=username.capitalize(), role=role).first()
         if not user:
             return jsonify(success=False, message="User not found. Check your selected role!"), 401
         elif not  bcrypt.check_password_hash(user.password_hash, password):
@@ -636,7 +638,7 @@ def login():
         session["user_id"] = user.id
         return jsonify({"success": True, "role": user.role})
     elif role == "teacher":
-        teacher = User.query.filter_by(email=email, role=role).first()
+        teacher = User.query.filter_by(email=username, role=role).first() or User.query.filter_by(username=username.capitalize(), role=role).first()
         if not teacher:
             return jsonify(success=False, message="User not found. Check your selected role!"), 401
         elif not  bcrypt.check_password_hash(teacher.password_hash, password):
@@ -645,7 +647,7 @@ def login():
         session["user_id"] = teacher.id
         return jsonify({"success": True, "role": teacher.role})
     elif role == "student":
-        student = User.query.filter_by(email=email, role=role).first()
+        student = User.query.filter_by(email=username, role=role).first() or User.query.filter_by(username=username.capitalize(), role=role).first()
         if not student:
             return jsonify(success=False, message="User not found. Check your selected role!"), 401
         elif not  bcrypt.check_password_hash(student.password_hash, password):
@@ -664,4 +666,3 @@ def start():
 
 if __name__ == "__main__":
     app.run(port=5000, debug=True)
-
