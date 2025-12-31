@@ -3,6 +3,7 @@ from dotenv import load_dotenv
 
 # load_dotenv()  # Only used locally, Render will use environment variables
 
+
 class Config:
     SECRET_KEY = os.getenv("SECRET_KEY")
 
@@ -14,3 +15,5 @@ class Config:
         )
 
     SQLALCHEMY_TRACK_MODIFICATIONS = False
+
+    
