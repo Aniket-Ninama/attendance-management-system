@@ -6,7 +6,6 @@ from dotenv import load_dotenv
 load_dotenv()
 
 def create_admin(app, db):
-<<<<<<< HEAD
     bcrypt = Bcrypt(app)
     existing_admin = User.query.filter_by(email=os.getenv("MY_EMAIL"), role="admin").first()
 
