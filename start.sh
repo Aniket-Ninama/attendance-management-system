@@ -1,8 +1,5 @@
 #!/bin/bash
 
-# Activate virtual environment
-source .venv/bin/activate
-
 # Set environment variables (if not already set in Render)
 export FLASK_APP=app.py
 export FLASK_ENV=production
