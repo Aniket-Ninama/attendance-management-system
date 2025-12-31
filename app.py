@@ -32,11 +32,6 @@ mail = Mail(app)
 app.secret_key = os.getenv("SECRET_KEY")
 bcrypt = Bcrypt(app=app)
 
-ADMIN_USERNAME = os.getenv("ADMIN_USERNAME")
-ADMIN_PASSWORD_HASH = bcrypt.generate_password_hash(
-    os.getenv("ADMIN_PASSWORD")
-).decode()
-
 @app.route("/logout")
 def logout():
     session.clear()  
