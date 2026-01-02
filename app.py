@@ -9,7 +9,6 @@ from sqlalchemy import extract, func, case
 from models import db ,User, Teacher, Student, Attendance
 from flask_mail import Mail, Message
 import os, random, string
-from threading import Thread
 from email_service import send_email
 
 
@@ -400,12 +399,6 @@ def add_teacher():
         db.session.add(new_user)
         db.session.commit()
 
-        msg = Message(
-            subject="Welcome to Attendease!",
-            sender=app.config["MAIL_USERNAME"],
-            recipients=[new_teacher.email]
-        )
-
         html_content = f"""
             <h3>Welcome to Attendease 🎉</h3>
             <p>Hi {new_teacher.name},</p>
@@ -425,7 +418,7 @@ def add_teacher():
         send_email(
             new_teacher.email,
             "Welcome to Attendease",
-            html_content=html_content
+            html_content
         )
 
         return jsonify({"message": "Teacher added successfully and email sent!"}), 201
@@ -536,13 +529,6 @@ def add_student():
         db.session.add(new_user)
         db.session.commit()
 
-        # Prepare email
-        msg = Message(
-            subject="Welcome to the Course!",
-            sender=app.config["MAIL_USERNAME"],
-            recipients=[new_student.email]
-        )
-
         html_content = f"""
         <h3>Welcome to Attendease 🎉</h3>
         <p>Hi {new_student.name},</p>
@@ -564,7 +550,7 @@ def add_student():
         send_email(
             new_student.email,
             "Welcome to Attendease",
-            html_content=html_content
+            html_content
         )
 
         return jsonify({
