@@ -9,6 +9,7 @@ from sqlalchemy import extract, func, case
 from models import db ,User, Teacher, Student, Attendance
 from flask_mail import Mail, Message
 import os, random, string
+from threading import Thread
 
 
 load_dotenv()
@@ -31,6 +32,9 @@ app.config.update(
 mail = Mail(app)
 app.secret_key = os.getenv("SECRET_KEY")
 bcrypt = Bcrypt(app=app)
+def send_email(app, msg):
+    with app.app_context():
+        mail.send(msg)
 
 @app.route("/logout")
 def logout():
@@ -365,26 +369,27 @@ def get_teacher_data():
 @app.route("/add-teacher", methods=["POST"])
 def add_teacher():
     data = request.json
-    if not data or not "newTeacher" in data:
+    if not data or "newTeacher" not in data:
         return jsonify({"message": "Invalid request body!"}), 400
-    
+
     teacher_data = data["newTeacher"]
     required_fields = ['name', 'email', 'subject', 'phone']
     for field in required_fields:
-        if field not in teacher_data or not teacher_data[field]:
+        if not teacher_data.get(field):
             return jsonify({"message": f"{field} is required"}), 400
-        
+
     # Generate password
     userName = teacher_data['name'].lower()
     random_digits = ''.join(random.choices(string.digits, k=3))
     user_password = userName + random_digits
-        
+
     new_teacher = Teacher(
         name=teacher_data['name'].capitalize(),
         email=teacher_data['email'],
         subject=teacher_data['subject'],
         phone=teacher_data['phone'],
     )
+
     new_user = User(
         username=new_teacher.name.capitalize(),
         email=new_teacher.email,
@@ -398,39 +403,44 @@ def add_teacher():
         db.session.commit()
 
         msg = Message(
-            subject="Welcome to the Course!",
+            subject="Welcome to Attendease!",
             sender=app.config["MAIL_USERNAME"],
             recipients=[new_teacher.email]
         )
+
         msg.body = f"""
-        Hi {new_teacher.name},
+Hi {new_teacher.name},
 
-        Welcome to Attendease 🎉
+Welcome to Attendease 🎉
 
-        You have been successfully added to the system as a faculty member.
-        Subject: {new_teacher.subject}
+You have been successfully added as a faculty member.
+Subject: {new_teacher.subject}
 
-        Your login credentials:
-        Username: {new_user.username}
-        Email: {new_teacher.email}
-        Password: {user_password}
+Your login credentials:
+Username: {new_user.username}
+Email: {new_teacher.email}
+Password: {user_password}
 
-        Best regards,
-        Attendease Team
+Best regards,
+Attendease Team
         """
 
-        mail.send(msg)
-
+        # 🔥 Send email asynchronously (IMPORTANT for Render)
+        Thread(
+            target=send_email,
+            args=(app, msg)
+        ).start()
 
         return jsonify({"message": "Teacher added successfully and email sent!"}), 201
 
-    except IntegrityError as e:
+    except IntegrityError:
         db.session.rollback()
-        return jsonify({"message": "Teacher already added!"}), 400  # Bad Request
+        return jsonify({"message": "Teacher already exists!"}), 400
 
     except Exception as e:
         db.session.rollback()
-        return jsonify({"message": str(e)}), 500  # General server error
+        return jsonify({"message": str(e)}), 500
+
     
 @app.route("/render-teachers")
 def render_teachers():
@@ -496,18 +506,18 @@ def add_student():
     data = request.json
     if not data or "newStudent" not in data:
         return jsonify({"message": "Invalid request body!"}), 400
-    
+
     student_data = data["newStudent"]
     required_fields = ['name', 'email', 'course_name', 'semester', 'section', 'roll']
     for field in required_fields:
         if not student_data.get(field):
             return jsonify({"message": f"{field} is required"}), 400
-    
+
     # Generate password
     userName = student_data['name'].lower()
     random_digits = ''.join(random.choices(string.digits, k=3))
     user_password = userName + random_digits
-    
+
     new_student = Student(
         name=student_data['name'].capitalize(),
         email=student_data['email'],
@@ -516,53 +526,61 @@ def add_student():
         semester=student_data['semester'],
         section=student_data['section']
     )
-    
+
     new_user = User(
-        username=new_student.name.capitalize(),
+        username=new_student.name,
         email=new_student.email,
         password_hash=bcrypt.generate_password_hash(user_password).decode('utf-8'),
         role="student"
     )
-    
+
     try:
         db.session.add(new_student)
         db.session.add(new_user)
         db.session.commit()
 
+        # Prepare email
         msg = Message(
             subject="Welcome to the Course!",
-            sender=app.config["MAIL_USERNAME"],
+            sender=current_app.config["MAIL_USERNAME"],
             recipients=[new_student.email]
         )
+
         msg.body = f"""
-        Hi {new_student.name},
+Hi {new_student.name},
 
-        Welcome to Attendease 🎉
+Welcome to Attendease 🎉
 
-        You have been successfully registered for {new_student.course_name}.
-        Roll No: {new_student.roll_no}
-        Semester: {new_student.semester}, Section: {new_student.section}
+You have been successfully registered for {new_student.course_name}.
+Roll No: {new_student.roll_no}
+Semester: {new_student.semester}, Section: {new_student.section}
 
-        Your login credentials:
-        Username: {new_user.username}
-        Email: {new_student.email}
-        Password: {user_password}
+Your login credentials:
+Username: {new_user.username}
+Email: {new_student.email}
+Password: {user_password}
 
-        Best regards,
-        Attendease Team
-        """
+Best regards,
+Attendease Team
+"""
 
-        mail.send(msg)
-        
-        return jsonify({"message": "Student added successfully and email sent!"}), 201
-    
+        Thread(
+            target=send_email,
+            args=(app, msg)
+        ).start()
+
+        return jsonify({
+            "message": "Student added successfully. Email will be sent shortly."
+        }), 201
+
     except IntegrityError:
         db.session.rollback()
         return jsonify({"message": "Student already exists!"}), 400
-    
+
     except Exception as e:
         db.session.rollback()
         return jsonify({"message": str(e)}), 500
+
 
 @app.route("/render-students")
 def render_students():
