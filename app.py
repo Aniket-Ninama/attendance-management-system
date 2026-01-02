@@ -422,11 +422,11 @@ def add_teacher():
             <p>Regards,<br>Attendease Team</p>
             """
 
-        # 🔥 Send email asynchronously (IMPORTANT for Render)
-        Thread(
-            target=send_email,
-            args=(new_teacher.email, "Welcome to Attendease", html_content)
-        ).start()
+        send_email(
+            new_teacher.email,
+            "Welcome to Attendease",
+            html_content=html_content
+        )
 
         return jsonify({"message": "Teacher added successfully and email sent!"}), 201
 
@@ -561,10 +561,11 @@ def add_student():
         <p>Regards,<br>Attendease Team</p>
         """
 
-        Thread(
-            target=send_email,
-            args=(new_student.email, "Welcome to Attendease", html_content)
-        ).start()
+        send_email(
+            new_student.email,
+            "Welcome to Attendease",
+            html_content=html_content
+        )
 
         return jsonify({
             "message": "Student added successfully. Email will be sent shortly."
