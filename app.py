@@ -10,6 +10,7 @@ from models import db ,User, Teacher, Student, Attendance
 from flask_mail import Mail, Message
 import os, random, string
 from threading import Thread
+from email_service import send_email
 
 
 load_dotenv()
@@ -32,9 +33,6 @@ app.config.update(
 mail = Mail(app)
 app.secret_key = os.getenv("SECRET_KEY")
 bcrypt = Bcrypt(app=app)
-def send_email(app, msg):
-    with app.app_context():
-        mail.send(msg)
 
 @app.route("/logout")
 def logout():
@@ -408,27 +406,26 @@ def add_teacher():
             recipients=[new_teacher.email]
         )
 
-        msg.body = f"""
-Hi {new_teacher.name},
+        html_content = f"""
+            <h3>Welcome to Attendease 🎉</h3>
+            <p>Hi {new_teacher.name},</p>
 
-Welcome to Attendease 🎉
+            <p>You have been added as a faculty member.</p>
 
-You have been successfully added as a faculty member.
-Subject: {new_teacher.subject}
+            <p><b>Subject:</b> {new_teacher.subject}</p>
 
-Your login credentials:
-Username: {new_user.username}
-Email: {new_teacher.email}
-Password: {user_password}
+            <p><b>Login Credentials:</b><br>
+            Username: {new_user.username}<br>
+            Email: {new_teacher.email}<br>
+            Password: {user_password}</p>
 
-Best regards,
-Attendease Team
-        """
+            <p>Regards,<br>Attendease Team</p>
+            """
 
         # 🔥 Send email asynchronously (IMPORTANT for Render)
         Thread(
             target=send_email,
-            args=(app, msg)
+            args=(new_teacher.email, "Welcome to Attendease", html_content)
         ).start()
 
         return jsonify({"message": "Teacher added successfully and email sent!"}), 201
@@ -546,27 +543,27 @@ def add_student():
             recipients=[new_student.email]
         )
 
-        msg.body = f"""
-Hi {new_student.name},
+        html_content = f"""
+        <h3>Welcome to Attendease 🎉</h3>
+        <p>Hi {new_student.name},</p>
 
-Welcome to Attendease 🎉
+        <p>You have been successfully registered.</p>
 
-You have been successfully registered for {new_student.course_name}.
-Roll No: {new_student.roll_no}
-Semester: {new_student.semester}, Section: {new_student.section}
+        <p><b>Roll No:</b> {new_student.roll_no}<br>
+        <b>Semester:</b> {new_student.semester}<br>
+        <b>Section:</b> {new_student.section}</p>
 
-Your login credentials:
-Username: {new_user.username}
-Email: {new_student.email}
-Password: {user_password}
+        <p><b>Login Credentials:</b><br>
+        Username: {new_user.username}<br>
+        Email: {new_student.email}<br>
+        Password: {user_password}</p>
 
-Best regards,
-Attendease Team
-"""
+        <p>Regards,<br>Attendease Team</p>
+        """
 
         Thread(
             target=send_email,
-            args=(app, msg)
+            args=(new_student.email, "Welcome to Attendease", html_content)
         ).start()
 
         return jsonify({
