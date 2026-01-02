@@ -542,7 +542,7 @@ def add_student():
         # Prepare email
         msg = Message(
             subject="Welcome to the Course!",
-            sender=aapp.config["MAIL_USERNAME"],
+            sender=app.config["MAIL_USERNAME"],
             recipients=[new_student.email]
         )
 
