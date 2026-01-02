@@ -1,26 +1,34 @@
 import sib_api_v3_sdk
 from sib_api_v3_sdk.rest import ApiException
 import os
+import requests
 
-def send_email(to_email, subject, content):
-    configuration = sib_api_v3_sdk.Configuration()
-    configuration.api_key['api-key'] = os.getenv("BREVO_API_KEY")
+BREVO_API_KEY = os.getenv("BREVO_API_KEY")
+SENDER_EMAIL = os.getenv("SENDER_EMAIL")
+SENDER_NAME = os.getenv("SENDER_NAME", "Attendease")
 
-    api_instance = sib_api_v3_sdk.TransactionalEmailsApi(
-        sib_api_v3_sdk.ApiClient(configuration)
-    )
+def send_email(to_email, subject, html_content):
+    url = "https://api.brevo.com/v3/smtp/email"
 
-    email = sib_api_v3_sdk.SendSmtpEmail(
-        to=[{"email": to_email}],
-        sender={
-            "email": os.getenv("SENDER_EMAIL"),
-            "name": os.getenv("SENDER_NAME")
+    headers = {
+        "accept": "application/json",
+        "api-key": BREVO_API_KEY,
+        "content-type": "application/json"
+    }
+
+    payload = {
+        "sender": {
+            "name": SENDER_NAME,
+            "email": SENDER_EMAIL
         },
-        subject=subject,
-        html_content=content
-    )
+        "to": [{"email": to_email}],
+        "subject": subject,
+        "htmlContent": html_content
+    }
 
-    try:
-        api_instance.send_transac_email(email)
-    except ApiException as e:
-        print("Brevo email failed:", e)
+    response = requests.post(url, json=payload, headers=headers)
+
+    print("Brevo status:", response.status_code)
+    print("Brevo response:", response.text)
+
+    return response.status_code
